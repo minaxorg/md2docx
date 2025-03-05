@@ -63,6 +63,11 @@ declare interface Mdast2DocxOptions {
    * Optional image2png converter
    */
   image2png?: ImageToPngConverter
+
+  /**
+   * 给每一页新增一个居中显示的页眉文字
+   */
+  pageHeader?: string
 }
 
 /**

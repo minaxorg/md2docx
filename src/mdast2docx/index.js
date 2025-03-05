@@ -12,7 +12,7 @@
 import { readFile } from 'fs/promises';
 import url from 'url';
 import path from 'path';
-import { Document, Packer } from 'docx';
+import { Document, Packer, Header, Paragraph, TextRun, AlignmentType } from 'docx';
 
 import all from './all.js';
 import handlers from './handlers/index.js';
@@ -28,6 +28,7 @@ export default async function mdast2docx(mdast, opts = {}) {
     log = console,
     resourceLoader,
     image2png,
+    pageHeader,
   } = opts;
 
   let {
@@ -75,6 +76,21 @@ export default async function mdast2docx(mdast, opts = {}) {
     numbering,
     externalStyles: stylesXML,
     sections: [{
+      headers: pageHeader ? {
+        default: new Header({
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: pageHeader,
+                  bold: true
+                })
+              ],
+              alignment: AlignmentType.CENTER
+            })
+          ]
+        })
+      } : undefined,
       children,
     }],
   });
