@@ -1,6 +1,6 @@
 {
   "name": "@minax/md2docx",
-  "version": "2.1.107",
+  "version": "2.1.108",
   "description": "Helix Service that converts markdown to word documents",
   "main": "src/index.js",
   "type": "module",
