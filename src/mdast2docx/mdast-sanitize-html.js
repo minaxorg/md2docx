@@ -120,6 +120,81 @@ const FORMATS = {
 };
 
 /**
+ * Drop trailing initial and final `br`s.
+ *
+ * @template {Nodes} Node
+ *   Node type.
+ * @param {Array<Node>} nodes
+ *   List of nodes.
+ * @returns {Array<Node>}
+ *   List of nodes w/o `break`s.
+ */
+function dropSurroundingBreaks(nodes) {
+  let start = 0
+  let end = nodes.length
+
+  while (start < end && nodes[start].type === 'break') start++
+  while (end > start && nodes[end - 1].type === 'break') end--
+
+  return start === 0 && end === nodes.length ? nodes : nodes.slice(start, end)
+}
+
+/**
+ * @param {string} styleStr 要转换的 style 字符串
+ * @returns {Object} 转换后的 style 对象
+ */
+function parseStyle(styleStr) {
+  // 解析 style 字符串为对象
+  let styleObj = {};
+  if (styleStr) {
+    const stylePairs = styleStr.split(';').filter(Boolean);
+    stylePairs.forEach((pair) => {
+      const [key, value] = pair.split(':').map((s) => s.trim());
+      if (key && value) {
+        // 将 CSS 属性名转换为驼峰命名
+        const camelCaseKey = key.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+        styleObj[camelCaseKey] = value;
+      }
+    });
+  }
+  return styleObj;
+}
+
+/**
+ * @param {State} state
+ *   State.
+ * @param {Readonly<Element>} node
+ *   hast element to transform.
+ * @returns {Paragraph | undefined}
+ *   mdast node.
+ */
+export function p(state, node) {
+  const children = dropSurroundingBreaks(
+    // Allow potentially “invalid” nodes, they might be unknown.
+    // We also support straddling later.
+    /** @type {Array<PhrasingContent>} */ (state.all(node))
+  );
+
+  // 提取节点的 style 属性
+  const properties = node.properties || {};
+  const styleStr = properties.style ? String(properties.style) : null;
+  // 调用 parseStyle 方法将 style 字符串转换为对象
+  const style = parseStyle(styleStr);
+
+  if (children.length > 0) {
+    /** @type {Paragraph} */
+    const result = {
+      type: 'paragraph',
+      children,
+      // 添加 style 对象到 mdast 节点
+      style
+    };
+    state.patch(node, result);
+    return result;
+  }
+}
+
+/**
  * Sanitizes html:
  * - collapses consecutive html content (simply concat all nodes until the last html sibling)
  * - parses and converts them to mdast again
@@ -211,6 +286,8 @@ export default function sanitizeHtml(tree) {
           markdown: mdHandler(mdInserts),
           th: tableCellHandler,
           td: tableCellHandler,
+          // 添加 p 标签的处理函数
+          p,
         },
       });
       // clear inserts

@@ -30,6 +30,13 @@ export default async function paragraph(ctx, node, parent) {
     alignment: parent.alignment,
   };
 
+  // 新增代码：判断是否有 style 且 textIndent 为 '2em'
+  if (node.style && node.style.textIndent === '2em') {
+    opts.indent = {
+      firstLine: '22pt' // FIXME: 我看现在默认的段落字体是 11 磅
+    };
+  }
+
   if (ctx.listLevel >= 0) {
     const list = ctx.lists[ctx.listLevel];
     if (list.numbering) {
