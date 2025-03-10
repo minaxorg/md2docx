@@ -31,7 +31,7 @@ const V_ALIGN = {
 
 export default async function tableCell(ctx, node, parent, siblings) {
   // eslint-disable-next-line no-param-reassign
-  node.alignment = ALIGN[node.align || ctx.table.align?.[siblings.length]];
+  node.alignment = ALIGN[node.align || ctx.table?.align?.[siblings.length]] || null;
   const children = await all(ctx, node);
 
   const content = [];
