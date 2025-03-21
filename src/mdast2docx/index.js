@@ -29,6 +29,8 @@ export default async function mdast2docx(mdast, opts = {}) {
     resourceLoader,
     image2png,
     pageHeader,
+    /** 渲染在文档的第一行，且添加 PageBreakBefore，方便用户打印使用 */
+    docxTitle,
   } = opts;
 
   let {
@@ -91,7 +93,15 @@ export default async function mdast2docx(mdast, opts = {}) {
           ]
         })
       } : undefined,
-      children,
+      children: [
+        docxTitle && new Paragraph({
+          text: docxTitle,
+          heading: 'Heading1',
+          pageBreakBefore: true,
+          alignment: AlignmentType.CENTER
+        }),
+        ...children,
+      ].filter(Boolean),
     }],
   });
 
