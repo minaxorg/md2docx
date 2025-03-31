@@ -78,6 +78,16 @@ export default async function mdast2docx(mdast, opts = {}) {
     numbering,
     externalStyles: stylesXML,
     sections: [{
+      properties: {
+        page: {
+          margin: {
+            top: '1.27cm',    // 1.27 厘米
+            right: '1.27cm', 
+            bottom: '1.27cm', 
+            left: '1.27cm',
+          },
+        },
+      },
       headers: pageHeader ? {
         default: new Header({
           children: [

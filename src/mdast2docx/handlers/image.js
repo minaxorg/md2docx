@@ -13,8 +13,8 @@ import { ImageRun } from 'docx';
 
 // max image width (6.5") and height (2")
 const LIMITS = {
-  width: 914400 * 6.26,
-  height: 914400 * 6.26,
+  width: 914400 * 7.2677,
+  height: 914400 * 7.2677,
 };
 
 // max image width (2") and height (1") in tables
