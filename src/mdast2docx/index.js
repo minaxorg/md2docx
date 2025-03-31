@@ -58,7 +58,7 @@ export default async function mdast2docx(mdast, opts = {}) {
   // process.stdout.write('==================================================\n');
 
   await downloadImages(ctx, mdast);
-  await buildAnchors(mdast);
+  buildAnchors(mdast);
   const children = await all(ctx, mdast);
 
   if (!stylesXML) {

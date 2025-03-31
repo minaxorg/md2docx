@@ -268,6 +268,7 @@ export default function sanitizeHtml(tree) {
         html = `<p>${html}</p>`;
       }
 
+      // FIXME：这里在 html 中有 base64 img 时，会很慢
       // try parse html
       const hast = unified()
         .use(parse, { fragment: true })
