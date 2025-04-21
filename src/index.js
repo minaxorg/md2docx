@@ -10,6 +10,6 @@
  * governing permissions and limitations under the License.
  */
 import mdast2docx from './mdast2docx/index.js';
-import md2docx from './md2docx/index.js';
+import md2docx, { mdList2docx } from './md2docx/index.js';
 
-export { mdast2docx, md2docx };
+export { mdast2docx, md2docx, mdList2docx };

@@ -26,5 +26,23 @@ export default async function md2docx(md, opts) {
     .parse(md);
 
   dereference(mdast);
-  return mdast2docx(mdast, opts);
+  return mdast2docx({ ...opts, mdast });
+}
+
+
+export async function mdList2docx(mdList, opts) {
+  const mdastList = []
+  for (const md of mdList) {
+    const mdast = unified()
+      .use(remark, { position: false })
+      .use(gfm)
+      .use(remarkMatter)
+      .use(remarkGridTable)
+      .parse(md);
+
+    dereference(mdast);
+    mdastList.push(mdast);
+  }
+
+  return mdast2docx({ ...opts, mdastList });
 }

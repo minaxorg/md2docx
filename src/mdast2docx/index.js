@@ -23,14 +23,21 @@ import { findXMLComponent } from './utils.js';
 import downloadImages from './mdast-download-images.js';
 import { buildAnchors } from './mdast-docx-anchors.js';
 
-export default async function mdast2docx(mdast, opts = {}) {
-  const {
+/**
+ * 将 mdast 转换为 docx
+ * @returns {Promise<Buffer>} 
+ */
+export default async function mdast2docx(opts = {}) {
+  let {
     log = console,
     resourceLoader,
     image2png,
     pageHeader,
+    mdast,
     /** 渲染在文档的第一行，且添加 PageBreakBefore，方便用户打印使用 */
     docxTitle,
+    mdastList,
+    docxTitleList,
   } = opts;
 
   let {
@@ -49,17 +56,24 @@ export default async function mdast2docx(mdast, opts = {}) {
     resourceLoader,
   };
 
-  // eslint-disable-next-line no-param-reassign
-  mdast = sanitizeHtml(mdast);
+  let children = []
+  let childrenList = []
 
-  // process.stdout.write('==================================================\n');
-  // process.stdout.write(inspect(mdast));
-  // process.stdout.write('\n');
-  // process.stdout.write('==================================================\n');
+  if (mdastList) {
+    for (const [index, mdast] of mdastList.entries()) {
+      mdastList[index] = sanitizeHtml(mdast);
+      await downloadImages(ctx, mdastList[index]);
+      buildAnchors(mdastList[index]);
+      childrenList.push(await all(ctx, mdastList[index]));
+    }
+  } else {
+    mdast = sanitizeHtml(mdast);
+    
+    await downloadImages(ctx, mdast);
+    buildAnchors(mdast);
+    children = await all(ctx, mdast);
+  }
 
-  await downloadImages(ctx, mdast);
-  buildAnchors(mdast);
-  const children = await all(ctx, mdast);
 
   if (!stylesXML) {
     // read styles from template.docx. this seems to be the most reliable
@@ -103,7 +117,7 @@ export default async function mdast2docx(mdast, opts = {}) {
           ]
         })
       } : undefined,
-      children: [
+      children: !mdastList ? [
         docxTitle && new Paragraph({
           text: docxTitle,
           heading: 'Heading1',
@@ -111,7 +125,17 @@ export default async function mdast2docx(mdast, opts = {}) {
           alignment: AlignmentType.CENTER
         }),
         ...children,
-      ].filter(Boolean),
+      ].filter(Boolean) : childrenList.map((children, index) => {
+        return [
+          docxTitleList[index] && new Paragraph({
+            text: docxTitleList[index],
+            heading: 'Heading1',
+            pageBreakBefore: true,
+            alignment: AlignmentType.CENTER
+          }),
+          ...children,
+        ].filter(Boolean)
+      }).flat(),
     }],
   });
 

@@ -19,3 +19,12 @@ import { Mdast2DocxOptions } from '../mdast2docx'
  * @returns {Promise<Buffer>} the docx
  */
 export default function md2docx(md: string, opts?: Mdast2DocxOptions): Promise<Buffer>;
+
+/**
+ * Converts the mdList to a word document (docx).
+ *
+ * @param {string[]} mdList The markdown documents
+ * @param {Mdast2DocxOptions} [opts] options
+ * @returns {Promise<Buffer>} the docx
+ */
+export function mdList2docx(mdList: string[], opts?: Mdast2DocxOptions): Promise<Buffer>;
