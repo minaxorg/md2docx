@@ -39,7 +39,7 @@ function formatHandler(type) {
  */
 export function linkHandler(state, node) {
   const properties = node.properties || {};
-  // Allow potentially “invalid” nodes, they might be unknown.
+  // Allow potentially "invalid" nodes, they might be unknown.
   // We also support straddling later.
   const children = /** @type {Array<PhrasingContent>} */ (state.all(node));
 
@@ -170,7 +170,7 @@ function parseStyle(styleStr) {
  */
 export function p(state, node) {
   const children = dropSurroundingBreaks(
-    // Allow potentially “invalid” nodes, they might be unknown.
+    // Allow potentially "invalid" nodes, they might be unknown.
     // We also support straddling later.
     /** @type {Array<PhrasingContent>} */ (state.all(node))
   );
@@ -204,6 +204,19 @@ export function p(state, node) {
  */
 export default function sanitizeHtml(tree) {
   const mdInserts = [];
+
+  // 提前预处理一遍，将 <br> 转换为 break
+  // 因为下面的操作有合并 html 节点的操作
+  // 中间的 markdown 语法的节点中如果再有 <br> 就会被忽略了
+  visit(tree, (node, index, parent) => {
+    if (node.type === 'html') {
+      if (node.value === '<br>') {
+        node.type = 'break';
+        delete node.value;
+      }
+    }
+  });
+
 
   visit(tree, (node, index, parent) => {
     const { children: siblings = [] } = parent || {};
