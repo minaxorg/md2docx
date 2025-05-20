@@ -11,10 +11,11 @@
  */
 import { ImageRun } from 'docx';
 
-// max image width (6.5") and height (2")
+// 20.99cm - 1.76cm - 1.76cm = 17.47cm = 6.87 英寸
+// max image width and height
 const LIMITS = {
-  width: 914400 * 7.2677,
-  height: 914400 * 7.2677,
+  width: 914400 * 6.87,
+  height: 914400 * 6.87,
 };
 
 // max image width (2") and height (1") in tables

@@ -18,7 +18,7 @@ import all from './all.js';
 import handlers from './handlers/index.js';
 import numbering from './default-numbering.js';
 import sanitizeHtml from './mdast-sanitize-html.js';
-// import { openArrayBuffer } from '../zipfile.js';
+import { openArrayBuffer } from './zipfile.js';
 import { findXMLComponent } from './utils.js';
 import downloadImages from './mdast-download-images.js';
 import { buildAnchors } from './mdast-docx-anchors.js';
@@ -76,16 +76,12 @@ export default async function mdast2docx(opts = {}) {
 
 
   if (!stylesXML) {
-    // read styles from template.docx. this seems to be the most reliable
-    // const templateDoc = await readFile(path.resolve(__dirname, 'template.docx'));
-    // const zip = await openArrayBuffer(templateDoc);
-    // const stylesXML = await zip.read('word/styles.xml', 'utf-8');
-
-    // eslint-disable-next-line no-underscore-dangle
     const __dirname = url.fileURLToPath ? path.dirname(url.fileURLToPath(import.meta.url)) : './';
-
-    // eslint-disable-next-line no-param-reassign
-    stylesXML = await readFile(path.resolve(__dirname, 'template', 'word', 'styles.xml'), 'utf-8');
+    // read styles from template.docx. this seems to be the most reliable
+    const templateDoc = await readFile(path.resolve(__dirname, 'template.docx'));
+    const zip = await openArrayBuffer(templateDoc);
+    stylesXML = await zip.read('word/styles.xml', 'utf-8');
+    console.log(stylesXML)
   }
 
   const doc = new Document({
@@ -95,10 +91,10 @@ export default async function mdast2docx(opts = {}) {
       properties: {
         page: {
           margin: {
-            top: '1.27cm',    // 1.27 厘米
-            right: '1.27cm', 
-            bottom: '1.27cm', 
-            left: '1.27cm',
+            top: '1.76cm',    // 1.76 厘米
+            right: '1.76cm', 
+            bottom: '1.76cm', 
+            left: '1.76cm',
           },
         },
       },
