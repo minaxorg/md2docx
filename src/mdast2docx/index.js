@@ -81,7 +81,6 @@ export default async function mdast2docx(opts = {}) {
     const templateDoc = await readFile(path.resolve(__dirname, 'template.docx'));
     const zip = await openArrayBuffer(templateDoc);
     stylesXML = await zip.read('word/styles.xml', 'utf-8');
-    console.log(stylesXML)
   }
 
   const doc = new Document({
