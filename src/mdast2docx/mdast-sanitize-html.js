@@ -83,8 +83,37 @@ function unwrapParagraphs(node) {
 function mdHandler(mdasts) {
   return (state, node) => {
     const { idx } = node.properties;
-    return mdasts[+idx];
+    const originalNode = mdasts[+idx];
+    
+    // 如果原始节点包含 HTML 内容，需要递归处理
+    if (originalNode && (originalNode.type === 'html' || hasHtmlContent(originalNode))) {
+      // 创建一个临时的树结构来处理这个节点
+      const tempTree = { type: 'root', children: [originalNode] };
+      // 递归调用 sanitizeHtml 处理这个节点
+      sanitizeHtml(tempTree);
+      // 返回处理后的第一个子节点
+      return tempTree.children[0];
+    }
+    
+    return originalNode;
   };
+}
+
+/**
+ * 检查节点或其子节点是否包含 HTML 内容
+ * @param {object} node 
+ * @returns {boolean}
+ */
+function hasHtmlContent(node) {
+  if (node.type === 'html') {
+    return true;
+  }
+  
+  if (node.children) {
+    return node.children.some(child => hasHtmlContent(child));
+  }
+  
+  return false;
 }
 
 function isPhrasingParent(node) {

@@ -18,36 +18,6 @@ import { remarkMatter } from '@adobe/helix-markdown-support/matter';
 import remarkGridTable from '@adobe/remark-gridtables';
 import mdast2docx from '../mdast2docx/index.js';
 
-// 后处理：移除包含图片和换行符的段落包装，如果 <img /><br /> 这种情况
-// 会被包装成段落，然后导致后续导出的时候 img 被当做文本导出，所以预处理一下
-function postprocessMdast(tree) {
-  visit(tree, (node, index, parent) => {
-    if (node.type === 'paragraph' && node.children) {
-      // 检查是否只包含图片和换行符
-      const hasOnlyImageAndBreak = node.children.every(child => 
-        (child.type === 'html' && child.value && child.value.trim().startsWith('<br')) ||
-        (child.type === 'html' && child.value && child.value.trim().startsWith('<img'))
-      );
-      
-      if (hasOnlyImageAndBreak && node.children.length > 0) {
-        // 提取图片节点
-        const imageNodes = node.children.filter(child => 
-          (child.type === 'html' && child.value && child.value.trim().startsWith('<img'))
-        );
-        
-        if (imageNodes.length === 1) {
-          // 替换段落为单个图片节点
-          parent.children[index] = imageNodes[0];
-        } else if (imageNodes.length > 1) {
-          // 如果有多个图片，保持数组形式
-          parent.children.splice(index, 1, ...imageNodes);
-        }
-      }
-    }
-  });
-  return tree;
-}
-
 
 export default async function md2docx(md, opts) {
   const mdast = unified()
@@ -58,7 +28,6 @@ export default async function md2docx(md, opts) {
     .parse(md);
 
   dereference(mdast);
-  postprocessMdast(mdast);
   return mdast2docx({ ...opts, mdast });
 }
 
