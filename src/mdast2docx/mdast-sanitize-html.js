@@ -210,7 +210,7 @@ export default function sanitizeHtml(tree) {
   // 中间的 markdown 语法的节点中如果再有 <br> 就会被忽略了
   visit(tree, (node, index, parent) => {
     if (node.type === 'html') {
-      if (node.value === '<br>') {
+      if (node.value === '<br>' || node.value === '<br/>' || node.value === '<br />') {
         node.type = 'break';
         delete node.value;
       }
@@ -223,7 +223,7 @@ export default function sanitizeHtml(tree) {
 
     // collapse html blocks
     if (node.type === 'html') {
-      if (node.value === '<br>') {
+      if (node.value === '<br>' || node.value === '<br/>' || node.value === '<br />') {
         // eslint-disable-next-line no-param-reassign
         node.type = 'break';
         // eslint-disable-next-line no-param-reassign
@@ -264,6 +264,7 @@ export default function sanitizeHtml(tree) {
       if (lastHtml > index) {
         // remove all html nodes
         const removed = siblings.splice(index + 1, lastHtml - index);
+
 
         // and append to html as special markdown element marker which is then handled in the
         // mdHandler for the `<markdown>` elements.
