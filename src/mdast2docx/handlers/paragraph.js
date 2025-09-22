@@ -9,7 +9,7 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { Paragraph } from 'docx';
+import { Paragraph, AlignmentType } from 'docx';
 import all from '../all.js';
 
 export default async function paragraph(ctx, node, parent) {
@@ -35,6 +35,10 @@ export default async function paragraph(ctx, node, parent) {
     opts.indent = {
       firstLine: '22pt' // FIXME: 我看现在默认的段落字体是 11 磅
     };
+  }
+
+  if (node.style && node.style.textAlign === 'right') {
+    opts.alignment = AlignmentType.END;
   }
 
   if (ctx.listLevel >= 0) {
