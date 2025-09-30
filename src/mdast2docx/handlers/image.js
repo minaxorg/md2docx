@@ -25,21 +25,29 @@ const LIMITS_TABLE = {
 };
 
 export default async function image(ctx, node) {
-  const { data } = node;
+  const { data, style } = node;
   if (!data) {
     return undefined;
+  }
+
+  let percent = 1
+
+  if (style) {
+    if (style.width.includes('%')) {
+      percent = parseFloat(style.width.replace('%', '')) / 100;
+    }
   }
 
   let x = data.dimensions.width * 9525;
   let y = data.dimensions.height * 9525;
   const limits = ctx.tableAlign ? LIMITS_TABLE : LIMITS;
   if (x > limits.width) {
-    y = Math.round((limits.width * y) / x);
-    x = limits.width;
+    y = Math.round((limits.width * percent * y) / x);
+    x = limits.width * percent;
   }
   if (y > limits.height) {
-    x = Math.round((limits.height * x) / y);
-    y = limits.height;
+    x = Math.round((limits.height * percent * x) / y);
+    y = limits.height * percent;
   }
 
   const options = {

@@ -172,7 +172,7 @@ function dropSurroundingBreaks(nodes) {
  * @param {string} styleStr 要转换的 style 字符串
  * @returns {Object} 转换后的 style 对象
  */
-function parseStyle(styleStr) {
+export function parseStyle(styleStr) {
   // 解析 style 字符串为对象
   let styleObj = {};
   if (styleStr) {
@@ -222,6 +222,19 @@ export function p(state, node) {
     return result;
   }
 }
+
+export const handlers = {
+  img(state, node) {
+    const result = defaultHandlers.img(state, node);
+    const properties = node.properties || {};
+    const styleStr = properties.style ? String(properties.style) : null;
+    const style = parseStyle(styleStr);
+    if (Object.keys(style).length > 0) {
+      result.style = style;
+    }
+    return result;
+  },
+};
 
 /**
  * Sanitizes html:
@@ -322,6 +335,7 @@ export default function sanitizeHtml(tree) {
         document: false,
         handlers: {
           ...defaultHandlers,
+          ...handlers,
           a: linkHandler,
           u: formatHandler('underline'),
           sub: formatHandler('subscript'),
