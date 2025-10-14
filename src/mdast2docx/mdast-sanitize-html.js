@@ -84,7 +84,7 @@ function mdHandler(mdasts) {
   return (state, node) => {
     const { idx } = node.properties;
     const originalNode = mdasts[+idx];
-    
+
     // 如果原始节点包含 HTML 内容，需要递归处理
     if (originalNode && (originalNode.type === 'html' || hasHtmlContent(originalNode))) {
       // 创建一个临时的树结构来处理这个节点
@@ -94,25 +94,25 @@ function mdHandler(mdasts) {
       // 返回处理后的第一个子节点
       return tempTree.children[0];
     }
-    
+
     return originalNode;
   };
 }
 
 /**
  * 检查节点或其子节点是否包含 HTML 内容
- * @param {object} node 
+ * @param {object} node
  * @returns {boolean}
  */
 function hasHtmlContent(node) {
   if (node.type === 'html') {
     return true;
   }
-  
+
   if (node.children) {
     return node.children.some(child => hasHtmlContent(child));
   }
-  
+
   return false;
 }
 
@@ -233,6 +233,22 @@ export const handlers = {
       result.style = style;
     }
     return result;
+  },
+  font(state, node) {
+    const properties = node.properties || {};
+    const color = properties.color;
+    const children = state.all(node);
+
+    if (color && children.length > 0) {
+      return {
+        type: 'fontColor',
+        color: color,
+        children: children
+      };
+    }
+
+    // 如果没有颜色属性，直接返回子节点
+    return { type: 'span', children };
   },
 };
 

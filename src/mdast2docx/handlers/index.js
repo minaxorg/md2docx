@@ -14,6 +14,7 @@ import bookmark from './bookmark.js';
 import brk from './break.js';
 import characterStyle from './characterStyle.js';
 import code from './code.js';
+import fontColor from './fontColor.js';
 import gridTable from './gridTable.js';
 import gtRow from './gtRow.js';
 import heading from './heading.js';
@@ -39,6 +40,7 @@ export default {
   code,
   delete: characterStyle('strike'),
   emphasis: characterStyle('italics'),
+  fontColor,
   gridTable,
   gtBody: all,
   gtCell: tableCell,

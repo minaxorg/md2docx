@@ -1,3 +1,12 @@
+## [2.1.108] - 2025-10-14
+
+### Features
+- Add font color support in DOCX output (`feat-font-color`)
+  - Supports HTML `<font color="">` and `<span style="color: ...">` in Markdown/HTML
+  - Maps named colors and hex values to DOCX run properties
+  - Gracefully ignores invalid color values without breaking conversion
+
+
 ## [2.1.107](https://github.com/adobe/helix-md2docx/compare/v2.1.106...v2.1.107) (2025-02-17)
 
 
