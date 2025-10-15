@@ -37,8 +37,18 @@ export default async function paragraph(ctx, node, parent) {
     };
   }
 
-  if (node.style && node.style.textAlign === 'right') {
-    opts.alignment = AlignmentType.END;
+  // 将段落的 textAlign 映射为 DOCX 的 AlignmentType
+  if (node.style && node.style.textAlign) {
+    const ta = node.style.textAlign;
+    if (ta === 'center') {
+      opts.alignment = AlignmentType.CENTER;
+    } else if (ta === 'right' || ta === 'end') {
+      opts.alignment = AlignmentType.END;
+    } else if (ta === 'left' || ta === 'start') {
+      opts.alignment = AlignmentType.START;
+    } else if (ta === 'justify' || ta === 'justified') {
+      opts.alignment = AlignmentType.JUSTIFIED;
+    }
   }
 
   if (ctx.listLevel >= 0) {
