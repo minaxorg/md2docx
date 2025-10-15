@@ -210,6 +210,12 @@ export function p(state, node) {
   // 调用 parseStyle 方法将 style 字符串转换为对象
   const style = parseStyle(styleStr);
 
+  // 兼容 <p align="center"> 等写法，将 align 映射到 style.textAlign（left | center | right | justify）
+  const alignAttr = properties.align ? String(properties.align).toLowerCase() : null;
+  if (alignAttr && !style.textAlign) {
+    style.textAlign = alignAttr;
+  }
+
   if (children.length > 0) {
     /** @type {Paragraph} */
     const result = {
