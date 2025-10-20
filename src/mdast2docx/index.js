@@ -60,11 +60,27 @@ export default async function mdast2docx(opts = {}) {
   let childrenList = []
 
   if (mdastList) {
+    // 收集所有文档的图片资源，避免重复下载
+    const globalImages = {};
+    
     for (const [index, mdast] of mdastList.entries()) {
+      // 为每个文档创建独立的 context，避免状态污染
+      const docCtx = {
+        handlers,
+        style: {},
+        paragraphStyle: '',
+        images: globalImages, // 共享图片资源，避免重复下载
+        listLevel: -1, // 重置列表级别
+        lists: [], // 重置列表状态
+        log,
+        image2png,
+        resourceLoader,
+      };
+      
       mdastList[index] = sanitizeHtml(mdast);
-      await downloadImages(ctx, mdastList[index]);
+      await downloadImages(docCtx, mdastList[index]);
       buildAnchors(mdastList[index]);
-      childrenList.push(await all(ctx, mdastList[index]));
+      childrenList.push(await all(docCtx, mdastList[index]));
     }
   } else {
     mdast = sanitizeHtml(mdast);
