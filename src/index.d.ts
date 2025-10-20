@@ -12,5 +12,6 @@
 
 import mdast2docx from './mdast2docx/index.js';
 import md2docx, { mdList2docx } from './md2docx/index.js';
+import { validateHtmlTags, fixHtmlTags } from './html-validator.js';
 
-export { mdast2docx, md2docx, mdList2docx };
+export { mdast2docx, md2docx, mdList2docx, validateHtmlTags, fixHtmlTags };
