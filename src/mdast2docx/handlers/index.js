@@ -27,6 +27,7 @@ import listItem from './listItem.js';
 import paragraph from './paragraph.js';
 import paragraphStyle from './paragraphStyle.js';
 import root from './root.js';
+import span from './span.js';
 import table from './table.js';
 import tableCell from './tableCell.js';
 import tableRow from './tableRow.js';
@@ -56,6 +57,7 @@ export default {
   listItem,
   paragraph,
   root,
+  span,
   strong: characterStyle('bold'),
   subscript: characterStyle('subScript'),
   superscript: characterStyle('superScript'),
