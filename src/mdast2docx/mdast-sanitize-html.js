@@ -256,6 +256,42 @@ export const handlers = {
     // 如果没有颜色属性，直接返回子节点
     return { type: 'span', children };
   },
+  span(state, node) {
+    const properties = node.properties || {};
+    const styleStr = properties.style ? String(properties.style) : null;
+    const style = parseStyle(styleStr);
+    const children = state.all(node);
+
+    // 如果有color样式，创建fontColor节点
+    if (style.color && children.length > 0) {
+      return {
+        type: 'fontColor',
+        color: style.color,
+        children: children
+      };
+    }
+
+    // 否则返回span节点
+    return { type: 'span', children };
+  },
+  del(state, node) {
+    const properties = node.properties || {};
+    const styleStr = properties.style ? String(properties.style) : null;
+    const style = parseStyle(styleStr);
+    const children = state.all(node);
+
+    // 如果有color样式，创建带颜色的删除线节点
+    if (style.color && children.length > 0) {
+      return {
+        type: 'deleteWithColor',
+        color: style.color,
+        children: children
+      };
+    }
+
+    // 否则返回普通的删除线节点
+    return { type: 'delete', children };
+  },
 };
 
 /**

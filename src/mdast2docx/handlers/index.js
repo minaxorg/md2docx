@@ -14,6 +14,7 @@ import bookmark from './bookmark.js';
 import brk from './break.js';
 import characterStyle from './characterStyle.js';
 import code from './code.js';
+import deleteWithColor from './deleteWithColor.js';
 import fontColor from './fontColor.js';
 import gridTable from './gridTable.js';
 import gtRow from './gtRow.js';
@@ -40,6 +41,7 @@ export default {
   break: brk,
   code,
   delete: characterStyle('strike'),
+  deleteWithColor,
   emphasis: characterStyle('italics'),
   fontColor,
   gridTable,

@@ -7,10 +7,15 @@ const testContent = `
 <table>
   <tr>
     <td>
-      <p><font><span style="color: red;">这是红色的span文本</span></font></p>
+      <p><font><span>这是蓝色的span文本</span></font></p>
+      <p><del>这是删除线文本</del></p>
     </td>
   </tr>
 </table>
+<p>
+<font><span style="color: blue;">这是蓝色的span文本</span></font>
+<del style="color: red;">这是删除线文本</del>
+</p>
 `;
 
 async function testSpan() {
