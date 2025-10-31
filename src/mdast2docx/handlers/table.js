@@ -21,8 +21,11 @@ import all from '../all.js';
 export default async function table(ctx, node) {
   let numCols = node.maxCols;
   if (node.children.length > 0) {
-    // eslint-disable-next-line no-param-reassign
-    node.children[0].tableHeader = true;
+    // 非“并排占位表格”（即未显式声明 borderless）才设置表头
+    if (!node.borderless) {
+      // eslint-disable-next-line no-param-reassign
+      node.children[0].tableHeader = true;
+    }
     if (!numCols) {
       numCols = node.children[0].children.length;
     }
@@ -36,9 +39,14 @@ export default async function table(ctx, node) {
     align: node.align || [],
   };
 
-  // use the same width for all columns
-  ctx.table.columnWidth = numCols ? (ctx.table.width / numCols) : ctx.table.width;
-  const columnWidths = new Array(numCols).fill(Math.round(ctx.table.columnWidth));
+  // 若节点提供了列宽 grid，则优先使用；否则均分
+  let columnWidths;
+  if (Array.isArray(node.grid) && node.grid.length === numCols) {
+    columnWidths = node.grid.map((w) => Math.max(0, Math.round(w)));
+  } else {
+    ctx.table.columnWidth = numCols ? (ctx.table.width / numCols) : ctx.table.width;
+    columnWidths = new Array(numCols).fill(Math.round(ctx.table.columnWidth));
+  }
 
   // process the rows
   const rows = await all(ctx, node);

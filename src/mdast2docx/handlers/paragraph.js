@@ -9,7 +9,7 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { Paragraph, AlignmentType } from 'docx';
+import { Paragraph, AlignmentType, FrameAnchorType, FrameWrap } from 'docx';
 import all from '../all.js';
 
 export default async function paragraph(ctx, node, parent) {
@@ -48,6 +48,37 @@ export default async function paragraph(ctx, node, parent) {
       opts.alignment = AlignmentType.START;
     } else if (ta === 'justify' || ta === 'justified') {
       opts.alignment = AlignmentType.JUSTIFIED;
+    } else if (ta === 'distributed' || ta === 'distribute') {
+      opts.alignment = AlignmentType.DISTRIBUTE;
+    }
+  }
+
+  // 行内块：应用 FrameProperties 进行并排布局
+  if (node.style && node.style.display === 'inline-block') {
+    // 1) 用整数且非负
+    const w = Math.max(0, Math.floor(node._frameLayout?.widthTwips ?? -1));
+    const x = Math.max(0, Math.floor(node._frameLayout?.xTwips ?? -1));
+    // 使用 IXYFrameOptions 格式，必须提供所有必需字段
+    if (Number.isFinite(w) && Number.isFinite(x)) {
+      opts.frame = {
+        type: 'absolute',
+        position: { x, y: 0 },
+
+        // 2) 不要写 height: 0（很多实现会当作固定 0 高）
+        //    省略 height，让其自适应内容
+        width: w,
+
+        anchor: {
+          // 3) 与你计算基准一致：x 从左页边距起算
+          horizontal: FrameAnchorType.MARGIN,
+          // 同一行基线：挂到当前段落
+          vertical: FrameAnchorType.PARAGRAPH,
+        },
+
+        // 4) 包围式/方形环绕，且禁止重叠（库若支持）
+        wrap: FrameWrap.AROUND,      // 或 FrameWrap.AROUND
+        // zIndex: 0,                // 库若支持层级，设为相同或按列序递增
+      };
     }
   }
 
