@@ -12,11 +12,12 @@
 import { visit } from 'unist-util-visit';
 import { unified } from 'unified';
 import parse from 'rehype-parse';
+import remarkParse from 'remark-parse';
 import { defaultHandlers, toMdast } from 'hast-util-to-mdast';
 // import inspect from 'unist-util-inspect';
 import tableHandler from './hast-table-handler.js';
 import tableCellHandler from './hast-table-cell-handler.js';
-
+import { parseWidthToTwips } from './handlers/utils.js';
 /**
  * Creates simple format handler
  * @param type
@@ -408,6 +409,48 @@ export default function sanitizeHtml(tree) {
       // clear inserts
       mdInserts.length = 0;
 
+      // 对 HTML 转换后的 mdast，进行一次“行内 Markdown”二次解析（白名单父节点）
+      const INLINE_PARENTS = new Set([
+        'paragraph','emphasis','strong','delete','underline','subscript','superscript',
+        'link','linkReference','tableCell','span'
+      ]);
+
+      function parseInlineMarkdown(textValue) {
+        try {
+          const tree = unified().use(remarkParse).parse(String(textValue || ''));
+          // 仅取第一个段落的 children 作为行内内容；否则退回原文本
+          const para = Array.isArray(tree.children) ? tree.children.find((n) => n.type === 'paragraph') : null;
+          return para && Array.isArray(para.children) && para.children.length > 0
+            ? para.children
+            : [{ type: 'text', value: String(textValue || '') }];
+        } catch (_) {
+          return [{ type: 'text', value: String(textValue || '') }];
+        }
+      }
+      function parseBlockMarkdown(textValue) {
+        try {
+          const tree = unified().use(remarkParse).parse(String(textValue || ''));
+          // 仅放行 heading 与 paragraph，避免引入列表/代码块等
+          return Array.isArray(tree.children)
+            ? tree.children.filter((n) => n.type === 'heading' || n.type === 'paragraph')
+            : [];
+        } catch (_) {
+          return [{ type: 'text', value: String(textValue || '') }];
+        }
+      }
+      visit(mdast, (n, i, p) => {
+        if (!p || !Number.isInteger(i)) return visit.CONTINUE;
+        if (n.type !== 'text') return visit.CONTINUE;
+
+        if (!INLINE_PARENTS.has(p.type)) return visit.CONTINUE;
+
+
+        const inlines = parseInlineMarkdown(n.value);
+        // 替换当前 text 节点为解析后的行内节点
+        p.children.splice(i, 1, ...inlines);
+        return i + inlines.length;
+      });
+
       // ensure that flow nodes are in phrasing context
       if (!isPhrasingParent(parent)) {
         let lastParagraph;
@@ -456,33 +499,7 @@ export default function sanitizeHtml(tree) {
   const AVAILABLE_WIDTH_CM = PAGE_WIDTH_CM - (MARGIN_CM * 2);
   const AVAILABLE_TWIPS = Math.floor(AVAILABLE_WIDTH_CM * 566.93); // cm 转 twips
 
-  function parseWidthToTwips(widthStr, totalTwips) {
-    if (!widthStr) return null;
-    const s = String(widthStr).trim();
-    if (!s) return null;
-    if (s.endsWith('%')) {
-      const pct = Number.parseFloat(s);
-      if (Number.isFinite(pct)) return (pct / 100) * totalTwips;
-      return null;
-    }
-    if (s.endsWith('px')) {
-      const px = Number.parseFloat(s);
-      if (Number.isFinite(px)) return px * 15; // 96dpi 近似：1px ≈ 15 twips
-      return null;
-    }
-    if (s.endsWith('cm')) {
-      const cm = Number.parseFloat(s);
-      if (Number.isFinite(cm)) return cm * 566.93;
-      return null;
-    }
-    if (s.endsWith('in')) {
-      const inch = Number.parseFloat(s);
-      if (Number.isFinite(inch)) return inch * 1440;
-      return null;
-    }
-    const n = Number.parseFloat(s);
-    return Number.isFinite(n) ? n * 15 : null;
-  }
+
 
   function isInlineBlockParagraph(n) {
     return n && n.type === 'paragraph' && n.style && n.style.display === 'inline-block';
