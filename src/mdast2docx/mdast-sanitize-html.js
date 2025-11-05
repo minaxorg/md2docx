@@ -409,10 +409,11 @@ export default function sanitizeHtml(tree) {
       // clear inserts
       mdInserts.length = 0;
 
-      // 对 HTML 转换后的 mdast，进行一次“行内 Markdown”二次解析（白名单父节点）
+      // 对 HTML 转换后的 mdast，进行一次"行内 Markdown"二次解析（白名单父节点）
+      // 注意：tableCell 不在白名单中，以便支持块级 Markdown（如标题、列表等）
       const INLINE_PARENTS = new Set([
         'paragraph','emphasis','strong','delete','underline','subscript','superscript',
-        'link','linkReference','tableCell','span'
+        'link','linkReference','span'
       ]);
 
       function parseInlineMarkdown(textValue) {
@@ -430,10 +431,8 @@ export default function sanitizeHtml(tree) {
       function parseBlockMarkdown(textValue) {
         try {
           const tree = unified().use(remarkParse).parse(String(textValue || ''));
-          // 仅放行 heading 与 paragraph，避免引入列表/代码块等
-          return Array.isArray(tree.children)
-            ? tree.children.filter((n) => n.type === 'heading' || n.type === 'paragraph')
-            : [];
+          // 返回所有解析结果（包括列表、代码块、引用等所有块级语法）
+          return Array.isArray(tree.children) ? tree.children : [];
         } catch (_) {
           return [{ type: 'text', value: String(textValue || '') }];
         }
@@ -442,13 +441,21 @@ export default function sanitizeHtml(tree) {
         if (!p || !Number.isInteger(i)) return visit.CONTINUE;
         if (n.type !== 'text') return visit.CONTINUE;
 
-        if (!INLINE_PARENTS.has(p.type)) return visit.CONTINUE;
+        // 行内父节点：仅解析行内 Markdown
+        if (INLINE_PARENTS.has(p.type)) {
+          const inlines = parseInlineMarkdown(n.value);
+          p.children.splice(i, 1, ...inlines);
+          return i + inlines.length;
+        }
 
+        // 非行内父节点：解析所有块级 Markdown（包括列表、代码块、引用等）
+        const blocks = parseBlockMarkdown(n.value);
+        if (blocks.length > 0) {
+          p.children.splice(i, 1, ...blocks);
+          return i + blocks.length;
+        }
 
-        const inlines = parseInlineMarkdown(n.value);
-        // 替换当前 text 节点为解析后的行内节点
-        p.children.splice(i, 1, ...inlines);
-        return i + inlines.length;
+        return visit.CONTINUE;
       });
 
       // ensure that flow nodes are in phrasing context
