@@ -410,7 +410,6 @@ export default function sanitizeHtml(tree) {
 
       // ensure that flow nodes are in phrasing context
       if (!isPhrasingParent(parent)) {
-        console.log('mdast', JSON.stringify(mdast));
         let lastParagraph;
         for (let idx = 0; idx < mdast.children.length; idx += 1) {
           const child = mdast.children[idx];
