@@ -98,7 +98,6 @@ export default function table(state, node) {
   if (node.properties?.['dataNoheader'] !== undefined) {
     mdNode.noHeader = true;
   }
-  console.log(node.properties);
 
 
   // compute the number of cells in each row, respecting the row and col spans.
