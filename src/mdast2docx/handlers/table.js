@@ -23,6 +23,10 @@ import { parseWidthToTwips } from './utils.js';
 export default async function table(ctx, node) {
   let numCols = node.maxCols;
   if (node.children.length > 0) {
+    if (!node.noHeader) {
+      // eslint-disable-next-line no-param-reassign
+      node.children[0].tableHeader = true;
+    }
     if (!numCols) {
       numCols = node.children[0].children.length;
     }

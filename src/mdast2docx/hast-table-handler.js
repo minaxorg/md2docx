@@ -94,6 +94,13 @@ export default function table(state, node) {
     maxCols: 0,
   };
 
+  // 读取 data-noheader 属性，如果存在则不设置表头
+  if (node.properties?.['dataNoheader'] !== undefined) {
+    mdNode.noHeader = true;
+  }
+  console.log(node.properties);
+
+
   // compute the number of cells in each row, respecting the row and col spans.
   const pendingRowSpans = [];
   for (const row of mdNode.children) {
