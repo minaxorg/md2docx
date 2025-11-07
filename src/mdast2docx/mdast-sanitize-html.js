@@ -410,10 +410,19 @@ export default function sanitizeHtml(tree) {
       mdInserts.length = 0;
 
       // 对 HTML 转换后的 mdast，进行一次"行内 Markdown"二次解析（白名单父节点）
-      // 注意：tableCell 不在白名单中，以便支持块级 Markdown（如标题、列表等）
+      // 策略：只对纯文本节点进行 Markdown 解析，保留已转换的 HTML 节点（fontColor、deleteWithColor 等）
+      // 参考 mdast PhrasingContent 规范：https://github.com/syntax-tree/mdast#phrasingcontent
       const INLINE_PARENTS = new Set([
-        'paragraph','emphasis','strong','delete','underline','subscript','superscript',
-        'link','linkReference','span'
+        // 标准 mdast 行内节点（PhrasingContent）
+        'paragraph','emphasis','strong','delete','inlineCode',
+        'link','linkReference','image','imageReference',
+        'break','footnote','footnoteReference',
+        // HTML 扩展节点
+        'underline','subscript','superscript','span',
+        // 自定义节点
+        'fontColor','deleteWithColor',
+        // 特殊容器节点（需要行内解析）
+        'tableCell'
       ]);
 
       function parseInlineMarkdown(textValue) {
@@ -439,6 +448,7 @@ export default function sanitizeHtml(tree) {
       }
       visit(mdast, (n, i, p) => {
         if (!p || !Number.isInteger(i)) return visit.CONTINUE;
+        // 只处理纯文本节点，跳过已转换的节点（fontColor、deleteWithColor、span 等）
         if (n.type !== 'text') return visit.CONTINUE;
 
         // 行内父节点：仅解析行内 Markdown
