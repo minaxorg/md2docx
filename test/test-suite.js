@@ -401,6 +401,30 @@ async function runAllTests() {
     },
 
     {
+      name: 'Font 包裹 Span 测试',
+      filename: 'font-span-nested',
+      markdown: `<p>
+<font><span style="color: blue;">这是蓝色的span文本</span></font>
+<del style="color: red;">这是删除线文本</del>
+</p>
+
+<table>
+  <tr>
+    <td>
+      <p><font><span style="color: blue;">表格内蓝色</span></font></p>
+      <p><del style="color: red;">表格内删除线</del></p>
+    </td>
+  </tr>
+</table>`,
+      validations: [
+        { type: 'hasColor', value: '0000FF', description: '包含蓝色' },
+        { type: 'hasColor', value: 'FF0000', description: '包含红色' },
+        { type: 'hasStrike', description: '包含删除线' },
+        { type: 'hasTable', description: '包含表格' },
+      ]
+    },
+
+    {
       name: '混合复杂内容测试',
       filename: 'complex-mixed',
       markdown: `## 标题
