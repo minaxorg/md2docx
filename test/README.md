@@ -39,6 +39,7 @@ node test/test-suite.js
 - ✓ 文本对齐（居中、左、右、两端、分散）
 - ✓ inline-block 并排布局
 - ✓ Font 标签颜色
+- ✓ Font 包裹 Span（嵌套标签）
 - ✓ 首行缩进
 - ✓ 表格背景色
 - ✓ 列表（有序、无序）
@@ -183,6 +184,16 @@ node test/test-existing-files.js # 现有文件测试
 
 当前所有测试通过率：**100%** ✓
 
-- 15 个功能测试用例全部通过
+- 16 个功能测试用例全部通过
 - 3 个现有文件测试全部通过
-- 52 个校验点全部通过
+- 56 个校验点全部通过
+
+## 一键运行命令
+
+```bash
+# 运行所有测试
+node test/run-all-tests.js
+
+# 清理测试输出
+Remove-Item test/output -Recurse -Force
+```
