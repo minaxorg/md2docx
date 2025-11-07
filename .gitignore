@@ -175,3 +175,12 @@ dist
 .svelte-kit
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,node
+
+# 忽略所有测试输出文件
+test/**/*.docx
+test/**/*.zip
+test/**/output/
+test/**/*-extracted/
+test-output-*.docx
+debug-*.js
+styles-formatted.xml
