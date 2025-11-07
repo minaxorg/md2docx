@@ -575,7 +575,7 @@ export default function sanitizeHtml(tree) {
           align: [],
           children: [tableRow],
           grid: widths,
-          borderless: true,
+          noHeader: true,
         };
 
         // 用表格替换该分组
