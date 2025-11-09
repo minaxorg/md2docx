@@ -116,9 +116,9 @@ const validators = {
     return xml.includes('<w:hyperlink');
   },
 
-  // 检查是否包含 Frame（inline-block 并排）
-  hasFrame: (xml) => {
-    return xml.includes('<w:framePr');
+  // 检查是否包含 inline-block 并排（转换为 PageBlock 表格）
+  hasInlineBlockTable: (xml) => {
+    return xml.includes('<w:tblStyle w:val="PageBlock"');
   },
 
   // 检查表格是否无表头（检查第一行是否没有粉红色背景）
@@ -309,7 +309,7 @@ async function runAllTests() {
       markdown: `<p style="display:inline-block; width:40%;">左边内容</p>
 <p style="display:inline-block; width:60%;">右侧内容</p>`,
       validations: [
-        { type: 'hasFrame', description: '包含 Frame 属性（并排布局）' },
+        { type: 'hasInlineBlockTable', description: '包含 PageBlock 表格布局（inline-block 并排）' },
         { type: 'hasText', value: '左边内容', description: '包含左边文本' },
         { type: 'hasText', value: '右侧内容', description: '包含右侧文本' },
       ]

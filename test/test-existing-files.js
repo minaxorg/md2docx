@@ -57,7 +57,8 @@ async function testFile(inputFile, expectedFeatures) {
       console.log(`\n特性检测:`);
       expectedFeatures.forEach(feature => {
         const exists = xml.includes(feature.pattern);
-        const status = exists ? '✓' : '✗';
+        const passed = feature.negate ? !exists : exists;
+        const status = passed ? '✓' : '✗';
         console.log(`  ${status} ${feature.description}`);
       });
     }
@@ -98,10 +99,10 @@ async function runAllFileTests() {
       file: path.join(testDir, 'testLayout.md'),
       features: [
         { pattern: '<w:tbl>', description: '包含表格' },
-        { pattern: '<w:framePr', description: '包含 inline-block 并排' },
+        { pattern: '<w:tblStyle w:val="PageBlock"', description: '包含 inline-block 并排' },
         { pattern: 'Heading2', description: '包含标题' },
         { pattern: 'FFFFFF', description: '包含白色背景' },
-        { pattern: 'data-noheader', description: '表格无表头（需检查）' },
+        { pattern: 'F4CCCD', description: '表格无表头（需检查）', negate: true },
       ]
     },
     {
@@ -113,7 +114,7 @@ async function runAllFileTests() {
         { pattern: '<w:hyperlink', description: '包含超链接' },
         { pattern: '<w:drawing>', description: '包含图片' },
         { pattern: 'w:val="center"', description: '包含居中对齐' },
-        { pattern: '<w:framePr', description: '包含 inline-block 并排' },
+        { pattern: '<w:tblStyle w:val="PageBlock"', description: '包含 inline-block 并排' },
       ]
     },
   ];
