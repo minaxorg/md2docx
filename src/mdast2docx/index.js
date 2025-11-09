@@ -23,6 +23,8 @@ import { findXMLComponent } from './utils.js';
 import downloadImages from './mdast-download-images.js';
 import { buildAnchors } from './mdast-docx-anchors.js';
 
+const cmToTwips = (cm) => Math.round((cm / 2.54) * 1440);
+
 /**
  * 将 mdast 转换为 docx
  * @returns {Promise<Buffer>} 
@@ -106,10 +108,10 @@ export default async function mdast2docx(opts = {}) {
       properties: {
         page: {
           margin: {
-            top: '1.76cm',    // 1.76 厘米
-            right: '1.76cm', 
-            bottom: '1.76cm', 
-            left: '1.76cm',
+            top: cmToTwips(1.76),    // 1.76 厘米
+            right: cmToTwips(1.76),
+            bottom: cmToTwips(1.76),
+            left: cmToTwips(1.76),
           },
         },
       },
@@ -156,16 +158,15 @@ export default async function mdast2docx(opts = {}) {
   cn.numId = 1;
 
   // temporary hack for problems with lists in online word
+  // 移除 docx 默认生成的 w:lvlJc，避免写出不符合规范的 start 值
   for (const nb of doc.numbering.abstractNumberingMap.values()) {
     nb.root.forEach((attr) => {
       if (attr.rootKey !== 'w:lvl') {
         return;
       }
-      const jc = findXMLComponent(attr, 'w:lvlJc');
-      if (jc) {
-        const idx = attr.root.indexOf(jc);
-        attr.root.splice(idx, 1);
-        attr.root.push(jc);
+      const jcIdx = attr.root.findIndex((child) => child.rootKey === 'w:lvlJc');
+      if (jcIdx !== -1) {
+        attr.root.splice(jcIdx, 1);
       }
     });
   }
