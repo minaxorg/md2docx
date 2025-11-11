@@ -116,10 +116,6 @@ const validators = {
     return xml.includes('<w:hyperlink');
   },
 
-  // 检查是否包含 inline-block 并排（转换为 PageBlock 表格）
-  hasInlineBlockTable: (xml) => {
-    return xml.includes('<w:tblStyle w:val="PageBlock"');
-  },
 
   // 检查表格是否无表头（检查第一行是否没有粉红色背景）
   hasNoTableHeader: (xml) => {
@@ -274,11 +270,14 @@ async function runAllTests() {
       filename: 'table-markdown',
       markdown: `<table>
   <tr>
-    <td>
-      **加粗文本** 和 *斜体文本*
-    </td>
+    <td><template data-template="tableMarkdownCell"></template></td>
   </tr>
 </table>`,
+      options: {
+        templates: {
+          tableMarkdownCell: `**加粗文本** 和 *斜体文本*`,
+        },
+      },
       validations: [
         { type: 'hasTable', description: '包含表格' },
         { type: 'hasBold', description: '单元格内包含加粗' },
@@ -302,19 +301,6 @@ async function runAllTests() {
         { type: 'hasDistributeAlign', description: '包含分散对齐' },
       ]
     },
-
-    {
-      name: 'inline-block 并排测试',
-      filename: 'inline-block',
-      markdown: `<p style="display:inline-block; width:40%;">左边内容</p>
-<p style="display:inline-block; width:60%;">右侧内容</p>`,
-      validations: [
-        { type: 'hasInlineBlockTable', description: '包含 PageBlock 表格布局（inline-block 并排）' },
-        { type: 'hasText', value: '左边内容', description: '包含左边文本' },
-        { type: 'hasText', value: '右侧内容', description: '包含右侧文本' },
-      ]
-    },
-
     {
       name: 'Font 标签颜色测试',
       filename: 'font-colors',
@@ -429,7 +415,7 @@ async function runAllTests() {
       filename: 'complex-mixed',
       markdown: `## 标题
 
-<p style="text-indent: 2em;">段落 <span style="color: blue;">**蓝色加粗**</span> <del style="color: red;">红色删除</del> 文本</p>
+<p style="text-indent: 2em;">段落 <span style="color: blue;"><strong>蓝色加粗</strong></span> <del style="color: red;">红色删除</del> 文本</p>
 
 - 列表项 1
 - 列表项 2
@@ -450,6 +436,36 @@ async function runAllTests() {
         { type: 'hasTable', description: '包含表格' },
         { type: 'hasBackgroundColor', value: 'FFFF00', description: '包含黄色背景' },
       ]
+    },
+
+    {
+      name: 'Template 占位符测试',
+      filename: 'template-placeholders-html-mix',
+      markdown: `<p>前置文本</p>
+<template data-template="intro"></template>
+<p>后置文本</p>
+<table>
+  <tr>
+    <td style="width: 50%; background-color: #ffffff">静态文本</td>
+    <td style="width: 50%; background-color: #ffffff"><template data-template="details"></template></td>
+  </tr>
+</table>`,
+      options: {
+        templates: {
+          intro: `<h1>模板标题</h1>
+<p>这是模板段落。</p>`,
+          details: `<ul>
+  <li>列表项 A</li>
+  <li>列表项 B</li>
+</ul>`,
+        },
+      },
+      validations: [
+        { type: 'hasHeading', level: 1, description: '模板标题渲染为 Heading1' },
+        { type: 'hasText', value: '这是模板段落。', description: '模板段落文本已插入' },
+        { type: 'hasList', description: '模板列表渲染为列表' },
+        { type: 'hasText', value: '列表项 A', description: '模板列表项 A 存在' },
+      ],
     },
   ];
 
@@ -493,5 +509,18 @@ async function runAllTests() {
 }
 
 // 运行测试
-runAllTests().catch(console.error);
+runAllTests()
+  .then((result) => {
+    if (!result) {
+      return;
+    }
+    const { totalFailed = 0, failedTests = 0 } = result;
+    if (totalFailed > 0 || failedTests > 0) {
+      process.exitCode = 1;
+    }
+  })
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
 

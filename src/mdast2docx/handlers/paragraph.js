@@ -9,7 +9,7 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { Paragraph, AlignmentType, FrameAnchorType, FrameWrap } from 'docx';
+import { Paragraph, Table, AlignmentType } from 'docx';
 import all from '../all.js';
 
 export default async function paragraph(ctx, node, parent) {
@@ -25,79 +25,87 @@ export default async function paragraph(ctx, node, parent) {
   }
 
   const children = await all(ctx, node);
-  const opts = {
-    children,
-    alignment: parent.alignment,
+
+  // 组装段落选项（对齐、缩进、列表、样式）
+  const buildParagraphOptions = (paragraphChildren) => {
+    const opts = {
+      children: paragraphChildren,
+      alignment: parent.alignment,
+    };
+
+    // 首行缩进
+    if (node.style && node.style.textIndent === '2em') {
+      opts.indent = {
+        firstLine: '22pt'
+      };
+    }
+
+    // 文本对齐
+    if (node.style && node.style.textAlign) {
+      const ta = node.style.textAlign;
+      if (ta === 'center') {
+        opts.alignment = AlignmentType.CENTER;
+      } else if (ta === 'right' || ta === 'end') {
+        opts.alignment = AlignmentType.END;
+      } else if (ta === 'left' || ta === 'start') {
+        opts.alignment = AlignmentType.START;
+      } else if (ta === 'justify' || ta === 'justified') {
+        opts.alignment = AlignmentType.JUSTIFIED;
+      } else if (ta === 'distributed' || ta === 'distribute') {
+        opts.alignment = AlignmentType.DISTRIBUTE;
+      }
+    }
+
+    // 列表编号/项目符号与段落样式
+    if (ctx.listLevel >= 0) {
+      const list = ctx.lists[ctx.listLevel];
+      if (list.numbering) {
+        opts.numbering = {
+          reference: list.numbering,
+          level: list.level,
+          instance: list.instance,
+        };
+        list.number += 1;
+      } else {
+        opts.bullet = {
+          level: list.level,
+        };
+      }
+    } else if (ctx.paragraphStyle) {
+      opts.style = ctx.paragraphStyle;
+    }
+
+    return opts;
   };
 
-  // 新增代码：判断是否有 style 且 textIndent 为 '2em'
-  if (node.style && node.style.textIndent === '2em') {
-    opts.indent = {
-      firstLine: '22pt' // FIXME: 我看现在默认的段落字体是 11 磅
-    };
-  }
+  // 块/行内拆分：遇到块级（Paragraph/Table）时先输出已累积的行内为段落，再输出块级为兄弟
+  const out = [];
+  let inlineRuns = [];
 
-  // 将段落的 textAlign 映射为 DOCX 的 AlignmentType
-  if (node.style && node.style.textAlign) {
-    const ta = node.style.textAlign;
-    if (ta === 'center') {
-      opts.alignment = AlignmentType.CENTER;
-    } else if (ta === 'right' || ta === 'end') {
-      opts.alignment = AlignmentType.END;
-    } else if (ta === 'left' || ta === 'start') {
-      opts.alignment = AlignmentType.START;
-    } else if (ta === 'justify' || ta === 'justified') {
-      opts.alignment = AlignmentType.JUSTIFIED;
-    } else if (ta === 'distributed' || ta === 'distribute') {
-      opts.alignment = AlignmentType.DISTRIBUTE;
+  const flushInline = () => {
+    if (inlineRuns.length === 0) {
+      return;
     }
-  }
+    const opts = buildParagraphOptions(inlineRuns);
+    out.push(new Paragraph(opts));
+    inlineRuns = [];
+  };
 
-  // 行内块：应用 FrameProperties 进行并排布局
-  if (node.style && node.style.display === 'inline-block') {
-    // 1) 用整数且非负
-    const w = Math.max(0, Math.floor(node._frameLayout?.widthTwips ?? -1));
-    const x = Math.max(0, Math.floor(node._frameLayout?.xTwips ?? -1));
-    // 使用 IXYFrameOptions 格式，必须提供所有必需字段
-    if (Number.isFinite(w) && Number.isFinite(x)) {
-      opts.frame = {
-        type: 'absolute',
-        position: { x, y: 0 },
-
-        // 2) 不要写 height: 0（很多实现会当作固定 0 高）
-        //    省略 height，让其自适应内容
-        width: w,
-
-        anchor: {
-          // 3) 与你计算基准一致：x 从左页边距起算
-          horizontal: FrameAnchorType.MARGIN,
-          // 同一行基线：挂到当前段落
-          vertical: FrameAnchorType.PARAGRAPH,
-        },
-
-        // 4) 包围式/方形环绕，且禁止重叠（库若支持）
-        wrap: FrameWrap.AROUND,      // 或 FrameWrap.AROUND
-        // zIndex: 0,                // 库若支持层级，设为相同或按列序递增
-      };
-    }
-  }
-
-  if (ctx.listLevel >= 0) {
-    const list = ctx.lists[ctx.listLevel];
-    if (list.numbering) {
-      opts.numbering = {
-        reference: list.numbering,
-        level: list.level,
-        instance: list.instance,
-      };
-      list.number += 1;
+  for (let i = 0; i < children.length; i += 1) {
+    const child = children[i];
+    if ((child instanceof Paragraph) || (child instanceof Table)) {
+      flushInline();
+      out.push(child);
     } else {
-      opts.bullet = {
-        level: list.level,
-      };
+      inlineRuns.push(child);
     }
-  } else if (ctx.paragraphStyle) {
-    opts.style = ctx.paragraphStyle;
   }
-  return new Paragraph(opts);
+  flushInline();
+
+  // 确保至少输出一个空段落，保持结构稳定
+  if (out.length === 0) {
+    out.push(new Paragraph(buildParagraphOptions([])));
+  }
+
+  return out;
 }

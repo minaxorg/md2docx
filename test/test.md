@@ -53,8 +53,8 @@
 颜色可以与其他格式混合使用：
 
 - <font color="red">**粗体红色文字**</font>
-- <font color="blue">*斜体蓝色文字*</font>
-- <font color="green">***粗斜体绿色文字***</font>
+- <font color="blue">_斜体蓝色文字_</font>
+- <font color="green">**_粗斜体绿色文字_**</font>
 - <font color="purple">~~删除线紫色文字~~</font>
 - <font color="orange">`代码样式橙色`</font>
 
@@ -78,11 +78,11 @@
 
 ## 8. 表格中使用颜色
 
-| 列1 | 列2 | 列3 |
-|-----|-----|-----|
-| <font color="red">红色</font> | <font color="green">绿色</font> | <font color="blue">蓝色</font> |
-| 普通文字 | <font color="purple">紫色文字</font> | 普通文字 |
-| <font color="orange">橙色</font> | <font color="pink">粉色</font> | <font color="brown">棕色</font> |
+| 列 1                             | 列 2                                 | 列 3                            |
+| -------------------------------- | ------------------------------------ | ------------------------------- |
+| <font color="red">红色</font>    | <font color="green">绿色</font>      | <font color="blue">蓝色</font>  |
+| 普通文字                         | <font color="purple">紫色文字</font> | 普通文字                        |
+| <font color="orange">橙色</font> | <font color="pink">粉色</font>       | <font color="brown">棕色</font> |
 
 ## 9. 引用块中使用颜色
 
@@ -115,11 +115,10 @@
 - 带空格的颜色名：<font color=" blue ">蓝色带空格</font>
 - 无效颜色名：<font color="notacolor">无效颜色名</font>（应该显示为普通文字）
 
-
-
 ---
 
 ## 14.文字居中测试
+
 <p align="center">这段文字应该在居中显示</p>
 <p align="center">
     <img style="width:50%;" src="https://otf-pub-cdn.ourteacher.cc/ourai-admin/assets/c369ec71/Snipaste_2025-10-13_15-53-35.png" />
@@ -150,40 +149,4 @@
 **测试日期**: 2025-10-14
 **功能版本**: v2.1.107
 
-
 ---
-
-## 15. inline-block 文本框并排测试（FrameProperties）
-
-说明：以下用例用于验证 `display:inline-block` 段落在同一行并排，且根据 HTML 的 `width` 或平均分配宽度渲染为文本框（FrameProperties）。
-
-### 15.1 两列（指定宽度 40% / 60%）
-<p style="display:inline-block; width:40%; text-align:justify">
-  <font color="blue">左列（40%）两端对齐</font> 左侧内容左侧内容左侧内容左侧内容左侧内容左侧内容
-</p>
-<p style="display:inline-block; width:60%; text-align:distribute">
-  <font color="green">右列（60%）分散对齐</font> 右侧内容右侧内容右侧内容右侧内容右侧内容右侧内容
-</p>
-
-### 15.2 三列（未指定宽度，平均分配）
-<p style="display:inline-block; text-align:left">
-  平均列1 无宽度 平均分配 平均列1 无宽度 平均分配 平均列1 无宽度 平均分配 平均列1 无宽度 平均分配 平均列1 无宽度 平均分配
-</p>
-<p style="display:inline-block; text-align:center">
-  平均列2 无宽度 平均分配平均列2 无宽度 平均分配平均列2 无宽度 平均分配平均列2 无宽度 平均分配平均列2 无宽度 平均分配平均列2 无宽度 平均分配平均列2 无宽度 平均分配
-</p>
-<p style="display:inline-block; text-align:right">
-  平均列3 无宽度 平均分配平均列3 无宽度 平均分配平均列3 无宽度 平均分配平均列3 无宽度 平均分配平均列3 无宽度 平均分配平均列3 无宽度 平均分配平均列3 无宽度 平均分配
-</p>
-
-### 15.3 多段混合（部分指定宽度，部分不指定）
-<p style="display:inline-block; width:10%; text-align:justify">
-  固定10% 列
-</p>
-<p style="display:inline-block; text-align:justify">
-  未指定列（应均分剩余）
-</p>
-<p style="display:inline-block; text-align:justify">
-  未指定列（应均分剩余）
-</p>
-

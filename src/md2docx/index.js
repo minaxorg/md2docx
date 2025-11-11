@@ -19,7 +19,7 @@ import remarkGridTable from '@adobe/remark-gridtables';
 import mdast2docx from '../mdast2docx/index.js';
 
 
-export default async function md2docx(md, opts) {
+export default async function md2docx(md, opts = {}) {
   const mdast = unified()
     .use(remark, { position: false })
     .use(gfm)
@@ -32,7 +32,7 @@ export default async function md2docx(md, opts) {
 }
 
 
-export async function mdList2docx(mdList, opts) {
+export async function mdList2docx(mdList, opts = {}) {
   const mdastList = []
   for (const md of mdList) {
     const mdast = unified()

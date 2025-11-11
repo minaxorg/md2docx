@@ -18,6 +18,100 @@ import { defaultHandlers, toMdast } from 'hast-util-to-mdast';
 import tableHandler from './hast-table-handler.js';
 import tableCellHandler from './hast-table-cell-handler.js';
 import { parseWidthToTwips } from './handlers/utils.js';
+
+const hasStructuredClone = typeof globalThis.structuredClone === 'function';
+
+const cloneMdastNode = (node) => {
+  if (hasStructuredClone) {
+    return globalThis.structuredClone(node);
+  }
+  return JSON.parse(JSON.stringify(node));
+};
+
+const cloneMdastNodes = (nodes = []) => nodes.map((item) => cloneMdastNode(item));
+
+const INLINE_NODE_TYPES = new Set([
+  'text',
+  'emphasis',
+  'strong',
+  'delete',
+  'inlineCode',
+  'break',
+  'image',
+  'imageReference',
+  'link',
+  'linkReference',
+  'footnote',
+  'footnoteReference',
+  'span',
+  'fontColor',
+  'deleteWithColor',
+  'underline',
+  'subscript',
+  'superscript',
+]);
+
+const unwrapInlineParagraphNodes = (nodes = []) => {
+  const flattened = [];
+  nodes.forEach((node) => {
+    if (node && node.type === 'paragraph') {
+      const children = Array.isArray(node.children) ? node.children : [];
+      if (children.length > 0 && children.every((child) => INLINE_NODE_TYPES.has(child.type))) {
+        flattened.push(...children);
+        return;
+      }
+    }
+    flattened.push(node);
+  });
+  return flattened;
+};
+
+const normalizeTemplateName = (value) => {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || '')).join(' ').trim();
+  }
+  if (value === null || value === undefined) {
+    return '';
+  }
+  return String(value).trim();
+};
+
+const resolveTemplateName = (properties = {}) => {
+  if (!properties || typeof properties !== 'object') {
+    return '';
+  }
+  if ('data-template' in properties) {
+    return normalizeTemplateName(properties['data-template']);
+  }
+  if ('dataTemplate' in properties) {
+    return normalizeTemplateName(properties.dataTemplate);
+  }
+  if (properties.dataset && typeof properties.dataset === 'object') {
+    return normalizeTemplateName(properties.dataset.template);
+  }
+  return '';
+};
+
+const createTemplateHandler = (ctx) => {
+  const logger = ctx?.log ?? console;
+  return (state, node) => {
+    const templateName = resolveTemplateName(node.properties);
+    if (!templateName) {
+      logger?.warn?.('template 节点缺少 data-template 属性');
+      return [{ type: 'paragraph', children: [] }];
+    }
+    const templateNodes = ctx?.templates?.[templateName];
+    if (Array.isArray(templateNodes) && templateNodes.length > 0) {
+      const cloned = cloneMdastNodes(templateNodes);
+      return unwrapInlineParagraphNodes(cloned);
+    }
+    logger?.warn?.(`模板 "${templateName}" 未找到，已忽略该节点`);
+    return [{ type: 'paragraph', children: [] }];
+  };
+};
 /**
  * Creates simple format handler
  * @param type
@@ -428,8 +522,9 @@ export const handlers = {
  * @param {object} tree
  * @returns {object} The modified (original) tree.
  */
-export default function sanitizeHtml(tree) {
+export default function sanitizeHtml(tree, ctx = {}) {
   const mdInserts = [];
+  const templateHandler = createTemplateHandler(ctx);
 
   // 提前预处理一遍，将 <br> 转换为 break
   // 因为下面的操作有合并 html 节点的操作
@@ -520,6 +615,7 @@ export default function sanitizeHtml(tree) {
         handlers: {
           ...defaultHandlers,
           ...handlers,
+          template: templateHandler,
           a: linkHandler,
           u: formatHandler('underline'),
           sub: formatHandler('subscript'),
@@ -572,27 +668,27 @@ export default function sanitizeHtml(tree) {
           return [{ type: 'text', value: String(textValue || '') }];
         }
       }
-      visit(mdast, (n, i, p) => {
-        if (!p || !Number.isInteger(i)) return visit.CONTINUE;
-        // 只处理纯文本节点，跳过已转换的节点（fontColor、deleteWithColor、span 等）
-        if (n.type !== 'text') return visit.CONTINUE;
+      // visit(mdast, (n, i, p) => {
+      //   if (!p || !Number.isInteger(i)) return visit.CONTINUE;
+      //   // 只处理纯文本节点，跳过已转换的节点（fontColor、deleteWithColor、span 等）
+      //   if (n.type !== 'text') return visit.CONTINUE;
 
-        // 行内父节点：仅解析行内 Markdown
-        if (INLINE_PARENTS.has(p.type)) {
-          const inlines = parseInlineMarkdown(n.value);
-          p.children.splice(i, 1, ...inlines);
-          return i + inlines.length;
-        }
+      //   // 行内父节点：仅解析行内 Markdown
+      //   if (INLINE_PARENTS.has(p.type)) {
+      //     const inlines = parseInlineMarkdown(n.value);
+      //     p.children.splice(i, 1, ...inlines);
+      //     return i + inlines.length;
+      //   }
 
-        // 非行内父节点：解析所有块级 Markdown（包括列表、代码块、引用等）
-        const blocks = parseBlockMarkdown(n.value);
-        if (blocks.length > 0) {
-          p.children.splice(i, 1, ...blocks);
-          return i + blocks.length;
-        }
+      //   // 非行内父节点：解析所有块级 Markdown（包括列表、代码块、引用等）
+      //   const blocks = parseBlockMarkdown(n.value);
+      //   if (blocks.length > 0) {
+      //     p.children.splice(i, 1, ...blocks);
+      //     return i + blocks.length;
+      //   }
 
-        return visit.CONTINUE;
-      });
+      //   return visit.CONTINUE;
+      // });
 
       // ensure that flow nodes are in phrasing context
       if (!isPhrasingParent(parent)) {
@@ -629,127 +725,6 @@ export default function sanitizeHtml(tree) {
 
     return visit.CONTINUE;
   });
-
-  // 后处理：为 root 下连续的 inline-block 段落计算 frame 布局（width/x，单位 twips）
-  // 根据实际页面设置计算可用宽度：
-  // - 默认 Word A4 页面宽度：21cm = 8.267 英寸 = 11907 twips
-  // - 页边距（与 index.js 保持一致）：左右各 1.76cm = 0.693 英寸 = 998 twips
-  // - 可用宽度：(21cm - 1.76cm*2) = 17.48cm = 6.88 英寸 = 9907 twips
-  // 参考 image.js：实际测量为 20.99cm - 1.76cm*2 = 17.47cm = 6.87 英寸
-  // 使用 17.47cm 转换为 twips：17.47 * 566.93 ≈ 9907 twips（更精确）
-  const PAGE_WIDTH_CM = 20.99; // A4 实际宽度（参考 image.js）
-  const MARGIN_CM = 2; // 左右页边距（与 index.js 保持一致）
-  const AVAILABLE_WIDTH_CM = PAGE_WIDTH_CM - (MARGIN_CM * 2);
-  const AVAILABLE_TWIPS = Math.floor(AVAILABLE_WIDTH_CM * 566.93); // cm 转 twips
-
-
-
-  function isInlineBlockParagraph(n) {
-    return n && n.type === 'paragraph' && n.style && n.style.display === 'inline-block';
-  }
-
-  // 处理某个父节点下的连续 inline-block 段落
-  function processInlineBlockGroups(siblings) {
-    if (!Array.isArray(siblings)) return;
-
-    let i = 0;
-    while (i < siblings.length) {
-      if (!isInlineBlockParagraph(siblings[i])) {
-        i += 1;
-        continue;
-      }
-      const group = [];
-      let j = i;
-      while (j < siblings.length && isInlineBlockParagraph(siblings[j])) {
-        group.push(siblings[j]);
-        j += 1;
-      }
-      if (group.length >= 2) {
-        // 先扣除列间距，再进行宽度计算
-        const SPACING_TWIPS = 50; // 列间距（仅用于视觉参考，表格会自然对齐）
-        const spacingTotal = SPACING_TWIPS * (group.length - 1);
-        const availableForCols = Math.max((AVAILABLE_TWIPS - spacingTotal), 0);
-
-        // 计算每个的宽度（显式优先，否则均分剩余）
-        const explicitWidths = group.map((n) => {
-          const width = parseWidthToTwips(n.style && n.style.width, availableForCols);
-          return width !== null ? Math.floor(width) : null;
-        });
-
-        const sumExplicit = explicitWidths.reduce((acc, v) => acc + (Number.isFinite(v) ? v : 0), 0);
-        const numAuto = explicitWidths.filter((v) => !Number.isFinite(v)).length;
-        const remain = Math.max(availableForCols - sumExplicit, 0);
-        const baseAuto = numAuto > 0 ? Math.floor(remain / numAuto) : 0;
-
-        const totalWidth = sumExplicit + (baseAuto * numAuto);
-        let scale = 1;
-        if (totalWidth > availableForCols && totalWidth > 0) {
-          scale = availableForCols / totalWidth;
-        }
-
-        const widths = new Array(group.length).fill(0);
-        for (let k = 0; k < group.length; k += 1) {
-          widths[k] = Number.isFinite(explicitWidths[k])
-            ? Math.floor(explicitWidths[k] * scale)
-            : Math.floor(baseAuto * scale);
-        }
-        const usedExceptLast = widths.slice(0, -1).reduce((a, b) => a + b, 0);
-        widths[widths.length - 1] = Math.max(0, availableForCols - usedExceptLast);
-
-        // 构造单行表格：每列一个单元格，承载原段落
-        const tableRow = {
-          type: 'tableRow',
-          children: group.map((colNode, idx) => ({
-            type: 'tableCell',
-            widthTwips: widths[idx],
-            children: [colNode],
-          })),
-        };
-
-        const tableNode = {
-          type: 'table',
-          align: [],
-          children: [tableRow],
-          grid: widths,
-          noHeader: true,
-        };
-
-        // 用表格替换该分组
-        siblings.splice(i, j - i, tableNode);
-        i = i + 1;
-        continue;
-      }
-      i = j;
-    }
-  }
-
-  // 只处理段落内的 inline-block 子段落，不处理根节点下的 inline-block 段落
-  // 检查条件：父节点必须是段落（嵌套在段落内），且该节点包含 inline-block 子段落
-  visit(tree, (node, index, parent) => {
-    // 只处理段落节点，且父节点必须是段落（不是 root）
-    if (node.type !== 'paragraph' ) {
-      return visit.CONTINUE;
-    }
-    // 检查这个段落内的子节点中是否有 inline-block 段落
-    if (!node.children || !Array.isArray(node.children)) {
-      return visit.CONTINUE;
-    }
-
-    const hasInlineBlock = node.children.some((child) => isInlineBlockParagraph(child));
-    if (hasInlineBlock) {
-      processInlineBlockGroups(node.children);
-    }
-
-    return visit.CONTINUE;
-  });
-
-  // 确保根节点下的兄弟段落也参与并排计算（例如直接写了多个 inline-block 段落）
-  if (tree && Array.isArray(tree.children)) {
-    const hasRootInlineBlock = tree.children.some((child) => isInlineBlockParagraph(child));
-    if (hasRootInlineBlock) {
-      processInlineBlockGroups(tree.children);
-    }
-  }
 
   splitParagraphFlowContent(tree);
   flattenParagraphChildrenForPhrasingNodes(tree);

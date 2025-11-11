@@ -13,6 +13,12 @@ import { readFile } from 'fs/promises';
 import url from 'url';
 import path from 'path';
 import { Document, Packer, Header, Paragraph, TextRun, AlignmentType } from 'docx';
+import { unified } from 'unified';
+import remark from 'remark-parse';
+import gfm from 'remark-gfm';
+import { dereference } from '@adobe/helix-markdown-support';
+import { remarkMatter } from '@adobe/helix-markdown-support/matter';
+import remarkGridTable from '@adobe/remark-gridtables';
 
 import all from './all.js';
 import handlers from './handlers/index.js';
@@ -23,11 +29,144 @@ import { findXMLComponent } from './utils.js';
 import downloadImages from './mdast-download-images.js';
 import { buildAnchors } from './mdast-docx-anchors.js';
 
+const hasStructuredClone = typeof globalThis.structuredClone === 'function';
+
+const cloneMdastNode = (node) => {
+  if (hasStructuredClone) {
+    return globalThis.structuredClone(node);
+  }
+  return JSON.parse(JSON.stringify(node));
+};
+
+const cloneMdastNodes = (nodes = []) => nodes.map((item) => cloneMdastNode(item));
+
+const normalizeTemplateSource = (source) => {
+  if (typeof source !== 'string') {
+    return '';
+  }
+
+  const normalizedLineEndings = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = normalizedLineEndings.split('\n');
+
+  // 移除首尾完全空白的行，避免引入多余段落
+  while (lines.length > 0 && lines[0].trim() === '') {
+    lines.shift();
+  }
+  while (lines.length > 0 && lines[lines.length - 1].trim() === '') {
+    lines.pop();
+  }
+
+  const indentSizes = lines
+    .filter((line) => line.trim() !== '')
+    .map((line) => {
+      const match = line.match(/^(\s+)/);
+      return match ? match[0].length : 0;
+    });
+
+  const minIndent = indentSizes.length > 0 ? Math.min(...indentSizes) : 0;
+
+  const dedented = minIndent > 0
+    ? lines.map((line) => (line.startsWith(' '.repeat(minIndent)) ? line.slice(minIndent) : line))
+    : lines;
+
+  const normalized = [];
+  let lastLineWasHtml = false;
+
+  dedented.forEach((line) => {
+    const trimmedLeft = line.trimStart();
+    const trimmed = trimmedLeft.trim();
+    const isHeading = trimmedLeft.startsWith('#');
+
+    if (!trimmed) {
+      normalized.push('');
+      lastLineWasHtml = false;
+      return;
+    }
+
+    if (isHeading) {
+      if (lastLineWasHtml && normalized[normalized.length - 1] !== '') {
+        normalized.push('');
+      }
+      normalized.push(trimmedLeft);
+      lastLineWasHtml = false;
+      return;
+    }
+
+    normalized.push(line);
+    lastLineWasHtml = /^<\/?[a-zA-Z]/.test(trimmedLeft);
+  });
+
+  return normalized.join('\n').trim();
+};
+
+const createTemplateProcessor = () => unified()
+  .use(remark, { position: false })
+  .use(gfm)
+  .use(remarkMatter)
+  .use(remarkGridTable);
+
+const createTemplateContext = (baseCtx) => ({
+  handlers: baseCtx.handlers,
+  style: {},
+  paragraphStyle: '',
+  images: baseCtx.images,
+  listLevel: -1,
+  lists: [],
+  log: baseCtx.log,
+  image2png: baseCtx.image2png,
+  resourceLoader: baseCtx.resourceLoader,
+  templates: baseCtx.templates,
+});
+
+const preprocessTemplates = async (ctx, templatesConfig) => {
+  if (!templatesConfig || typeof templatesConfig !== 'object') {
+    ctx.templates = {};
+    return;
+  }
+
+  const entries = Object.entries(templatesConfig).filter(
+    ([name, raw]) => typeof name === 'string' && typeof raw === 'string',
+  );
+
+  if (entries.length === 0) {
+    ctx.templates = {};
+    return;
+  }
+
+  ctx.templates = {};
+  const processor = createTemplateProcessor();
+
+  for (const [name, rawTemplate] of entries) {
+    const templateName = name.trim();
+    if (!templateName) {
+      continue;
+    }
+
+    try {
+      const templateMarkdown = normalizeTemplateSource(rawTemplate);
+      const templateRoot = processor.parse(templateMarkdown);
+      dereference(templateRoot);
+
+      const templateCtx = createTemplateContext(ctx);
+
+      sanitizeHtml(templateRoot, templateCtx);
+      await downloadImages(templateCtx, templateRoot);
+      buildAnchors(templateRoot);
+
+      ctx.templates[templateName] = cloneMdastNodes(templateRoot.children);
+
+      await all(templateCtx, templateRoot);
+    } catch (error) {
+      ctx.log?.warn?.(`模板 "${templateName}" 处理失败: ${error.message}`);
+    }
+  }
+};
+
 const cmToTwips = (cm) => Math.round((cm / 2.54) * 1440);
 
 /**
  * 将 mdast 转换为 docx
- * @returns {Promise<Buffer>} 
+ * @returns {Promise<Buffer>}
  */
 export default async function mdast2docx(opts = {}) {
   let {
@@ -40,6 +179,7 @@ export default async function mdast2docx(opts = {}) {
     docxTitle,
     mdastList,
     docxTitleList,
+    templates = {},
   } = opts;
 
   let {
@@ -56,7 +196,10 @@ export default async function mdast2docx(opts = {}) {
     log,
     image2png,
     resourceLoader,
+    templates: {},
   };
+
+  await preprocessTemplates(ctx, templates);
 
   let children = []
   let childrenList = []
@@ -64,7 +207,7 @@ export default async function mdast2docx(opts = {}) {
   if (mdastList) {
     // 收集所有文档的图片资源，避免重复下载
     const globalImages = {};
-    
+
     for (const [index, mdast] of mdastList.entries()) {
       // 为每个文档创建独立的 context，避免状态污染
       const docCtx = {
@@ -77,16 +220,17 @@ export default async function mdast2docx(opts = {}) {
         log,
         image2png,
         resourceLoader,
+        templates: ctx.templates,
       };
-      
-      mdastList[index] = sanitizeHtml(mdast);
+
+      mdastList[index] = sanitizeHtml(mdast, docCtx);
       await downloadImages(docCtx, mdastList[index]);
       buildAnchors(mdastList[index]);
       childrenList.push(await all(docCtx, mdastList[index]));
     }
   } else {
-    mdast = sanitizeHtml(mdast);
-    
+    mdast = sanitizeHtml(mdast, ctx);
+
     await downloadImages(ctx, mdast);
     buildAnchors(mdast);
     children = await all(ctx, mdast);

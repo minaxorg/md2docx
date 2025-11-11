@@ -37,7 +37,6 @@ node test/test-suite.js
 - ✓ 表格基础功能（列宽、无表头）
 - ✓ 表格内 Markdown
 - ✓ 文本对齐（居中、左、右、两端、分散）
-- ✓ inline-block 并排布局
 - ✓ Font 标签颜色
 - ✓ Font 包裹 Span（嵌套标签）
 - ✓ 首行缩进
@@ -67,7 +66,7 @@ node test/test-existing-files.js
 **测试文件：**
 
 - `testfont.md` - 字体颜色和删除线测试
-- `testLayout.md` - 表格布局和 inline-block 测试
+- `testLayout.md` - 表格布局和
 - `test.md` - 完整功能测试文档
 
 **输出：**
@@ -100,7 +99,6 @@ node test/test-existing-files.js
 
 测试表格和布局功能：
 
-- inline-block 并排段落
 - 表格列宽控制
 - 表格背景色
 - 表格内 Markdown（标题、加粗）
@@ -114,7 +112,6 @@ node test/test-existing-files.js
 - 文本对齐（居中、左、右、两端、分散）
 - 图片（居中、右对齐、宽度控制）
 - 表格
-- inline-block 并排布局
 - 列表
 - 引用
 - 超链接
@@ -143,7 +140,6 @@ node test/test-existing-files.js
 - `hasList()` - 检查是否包含列表
 - `hasQuote()` - 检查是否包含引用
 - `hasHyperlink()` - 检查是否包含超链接
-- `hasFrame()` - 检查是否包含 Frame（inline-block 并排）
 - `hasNoTableHeader()` - 检查表格是否无表头
 
 ## 清理测试文件
