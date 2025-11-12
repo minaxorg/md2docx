@@ -31,6 +31,41 @@ import { buildAnchors } from './mdast-docx-anchors.js';
  * 将 mdast 转换为 docx
  * @returns {Promise<Buffer>}
  */
+function validateFontSize(value, name) {
+  if (value === undefined || value === null) {
+    return;
+  }
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name} 必须是大于 0 的整数（半磅单位，例如 22 = 11pt）`);
+  }
+}
+
+function applyStyleOptions(stylesXML, styleOptions) {
+  let result = stylesXML;
+
+  const { defaultFontSize, headingFontSizes = {} } = styleOptions;
+
+  if (defaultFontSize !== undefined) {
+    const size = defaultFontSize;
+    result = result.replace(/(<w:docDefaults>.*?<w:sz w:val=")(\d+)(".*?<\/w:docDefaults>)/s, `$1${size}$3`);
+    result = result.replace(/(<w:docDefaults>.*?<w:szCs w:val=")(\d+)(".*?<\/w:docDefaults>)/s, `$1${size}$3`);
+  }
+
+  for (let level = 1; level <= 6; level += 1) {
+    const key = `h${level}`;
+    if (headingFontSizes[key] === undefined) {
+      continue;
+    }
+    const size = headingFontSizes[key];
+    const regex = new RegExp(`(<w:style[^>]*styleId="${level}"[^>]*>.*?<w:sz w:val=")(\\d+)(".*?<\/w:style>)`, 's');
+    const regexCs = new RegExp(`(<w:style[^>]*styleId="${level}"[^>]*>.*?<w:szCs w:val=")(\\d+)(".*?<\/w:style>)`, 's');
+    result = result.replace(regex, `$1${size}$3`);
+    result = result.replace(regexCs, `$1${size}$3`);
+  }
+
+  return result;
+}
+
 export default async function mdast2docx(opts = {}) {
   let {
     log = console,
@@ -42,11 +77,35 @@ export default async function mdast2docx(opts = {}) {
     docxTitle,
     mdastList,
     docxTitleList,
+    stylesXML = null,
+    styleOptions = undefined,
   } = opts;
 
-  let {
-    stylesXML = null,
-  } = opts;
+  const normalizedStyleOptions = {
+    defaultFontSize: undefined,
+    headingFontSizes: {},
+  };
+
+  if (styleOptions && typeof styleOptions === 'object') {
+    if (styleOptions.defaultFontSize !== undefined) {
+      validateFontSize(styleOptions.defaultFontSize, 'styleOptions.defaultFontSize');
+      normalizedStyleOptions.defaultFontSize = styleOptions.defaultFontSize;
+    }
+
+    if (styleOptions.headingFontSizes && typeof styleOptions.headingFontSizes === 'object') {
+      for (let level = 1; level <= 6; level += 1) {
+        const key = `h${level}`;
+        if (styleOptions.headingFontSizes[key] === undefined) {
+          continue;
+        }
+        validateFontSize(styleOptions.headingFontSizes[key], `styleOptions.headingFontSizes.${key}`);
+        normalizedStyleOptions.headingFontSizes[key] = styleOptions.headingFontSizes[key];
+      }
+    }
+  }
+
+  const hasStyleOverrides = normalizedStyleOptions.defaultFontSize !== undefined
+    || Object.keys(normalizedStyleOptions.headingFontSizes).length > 0;
 
   const ctx = {
     handlers,
@@ -102,6 +161,11 @@ export default async function mdast2docx(opts = {}) {
     const templateDoc = await readFile(path.resolve(__dirname, 'template.docx'));
     const zip = await openArrayBuffer(templateDoc);
     stylesXML = await zip.read('word/styles.xml', 'utf-8');
+    if (hasStyleOverrides) {
+      stylesXML = applyStyleOptions(stylesXML, normalizedStyleOptions);
+    }
+  } else if (hasStyleOverrides) {
+    log?.warn?.('同时提供 stylesXML 与 styleOptions，已优先使用 stylesXML，忽略 styleOptions');
   }
 
   const doc = new Document({

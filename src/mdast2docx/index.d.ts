@@ -94,6 +94,28 @@ declare interface Mdast2DocxOptions {
    * Markdown 模板集合，键为模板名称，值为 Markdown 字符串
    */
   templates?: Record<string, string>;
+
+  /**
+   * 样式配置（可逐步扩展）
+   */
+  styleOptions?: {
+    /**
+     * 默认字体大小（半磅单位，例如 22 = 11pt）
+     */
+    defaultFontSize?: number
+
+    /**
+     * 标题字体大小配置（半磅单位，例如 40 = 20pt）
+     */
+    headingFontSizes?: {
+      h1?: number
+      h2?: number
+      h3?: number
+      h4?: number
+      h5?: number
+      h6?: number
+    }
+  }
 }
 
 /**
