@@ -631,65 +631,6 @@ export default function sanitizeHtml(tree, ctx = {}) {
       // clear inserts
       mdInserts.length = 0;
 
-      // 对 HTML 转换后的 mdast，进行一次"行内 Markdown"二次解析（白名单父节点）
-      // 策略：只对纯文本节点进行 Markdown 解析，保留已转换的 HTML 节点（fontColor、deleteWithColor 等）
-      // 参考 mdast PhrasingContent 规范：https://github.com/syntax-tree/mdast#phrasingcontent
-      const INLINE_PARENTS = new Set([
-        // 标准 mdast 行内节点（PhrasingContent）
-        'paragraph','emphasis','strong','delete','inlineCode',
-        'link','linkReference','image','imageReference',
-        'break','footnote','footnoteReference',
-        // HTML 扩展节点
-        'underline','subscript','superscript','span',
-        // 自定义节点
-        'fontColor','deleteWithColor',
-        // 特殊容器节点（需要行内解析）
-        'tableCell'
-      ]);
-
-      function parseInlineMarkdown(textValue) {
-        try {
-          const tree = unified().use(remarkParse).parse(String(textValue || ''));
-          // 仅取第一个段落的 children 作为行内内容；否则退回原文本
-          const para = Array.isArray(tree.children) ? tree.children.find((n) => n.type === 'paragraph') : null;
-          return para && Array.isArray(para.children) && para.children.length > 0
-            ? para.children
-            : [{ type: 'text', value: String(textValue || '') }];
-        } catch (_) {
-          return [{ type: 'text', value: String(textValue || '') }];
-        }
-      }
-      function parseBlockMarkdown(textValue) {
-        try {
-          const tree = unified().use(remarkParse).parse(String(textValue || ''));
-          // 返回所有解析结果（包括列表、代码块、引用等所有块级语法）
-          return Array.isArray(tree.children) ? tree.children : [];
-        } catch (_) {
-          return [{ type: 'text', value: String(textValue || '') }];
-        }
-      }
-      // visit(mdast, (n, i, p) => {
-      //   if (!p || !Number.isInteger(i)) return visit.CONTINUE;
-      //   // 只处理纯文本节点，跳过已转换的节点（fontColor、deleteWithColor、span 等）
-      //   if (n.type !== 'text') return visit.CONTINUE;
-
-      //   // 行内父节点：仅解析行内 Markdown
-      //   if (INLINE_PARENTS.has(p.type)) {
-      //     const inlines = parseInlineMarkdown(n.value);
-      //     p.children.splice(i, 1, ...inlines);
-      //     return i + inlines.length;
-      //   }
-
-      //   // 非行内父节点：解析所有块级 Markdown（包括列表、代码块、引用等）
-      //   const blocks = parseBlockMarkdown(n.value);
-      //   if (blocks.length > 0) {
-      //     p.children.splice(i, 1, ...blocks);
-      //     return i + blocks.length;
-      //   }
-
-      //   return visit.CONTINUE;
-      // });
-
       // ensure that flow nodes are in phrasing context
       if (!isPhrasingParent(parent)) {
         let lastParagraph;
