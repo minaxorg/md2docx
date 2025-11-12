@@ -24,6 +24,7 @@ async function runAllTests() {
   const results = {
     suite: null,
     existing: null,
+    styles: null,
   };
 
   // 运行测试套件
@@ -39,8 +40,21 @@ async function runAllTests() {
 
   console.log('\n');
 
+  // 运行自定义样式测试
+  console.log('2. 运行样式配置测试 (test-custom-styles.js)...');
+  console.log('-'.repeat(70));
+  try {
+    execSync('node test/test-custom-styles.js', { stdio: 'inherit' });
+    results.styles = { success: true };
+  } catch (error) {
+    console.error('✗ 样式配置测试运行失败');
+    results.styles = { success: false, error: error.message };
+  }
+
+  console.log('\n');
+
   // 运行现有文件测试
-  console.log('2. 运行现有文件测试 (test-existing-files.js)...');
+  console.log('3. 运行现有文件测试 (test-existing-files.js)...');
   console.log('-'.repeat(70));
   try {
     execSync('node test/test-existing-files.js', { stdio: 'inherit' });
@@ -56,7 +70,7 @@ async function runAllTests() {
   console.log('测试完成');
   console.log('='.repeat(70));
 
-  const allSuccess = results.suite?.success && results.existing?.success;
+  const allSuccess = results.suite?.success && results.styles?.success && results.existing?.success;
 
   if (allSuccess) {
     console.log('✓ 所有测试通过！');
@@ -64,6 +78,9 @@ async function runAllTests() {
     console.log('✗ 部分测试失败');
     if (!results.suite?.success) {
       console.log('  - 功能测试套件失败');
+    }
+    if (!results.styles?.success) {
+      console.log('  - 样式配置测试失败');
     }
     if (!results.existing?.success) {
       console.log('  - 现有文件测试失败');

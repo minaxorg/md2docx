@@ -44,7 +44,6 @@ async function convertTemplatesToHtml(md = "", templates) {
 export default async function md2docx(md, opts = {}) {
   const { templates, ...restOpts } = opts;
   const replacedMd = await convertTemplatesToHtml(md, templates);
-
   const mdast = unified()
     .use(remark, { position: false })
     .use(gfm)
