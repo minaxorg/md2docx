@@ -14,6 +14,7 @@ import url from 'url';
 import path from 'path';
 import { Document, Packer, Header, Paragraph, TextRun, AlignmentType } from 'docx';
 
+
 import all from './all.js';
 import handlers from './handlers/index.js';
 import numbering from './default-numbering.js';
@@ -23,9 +24,12 @@ import { findXMLComponent } from './utils.js';
 import downloadImages from './mdast-download-images.js';
 import { buildAnchors } from './mdast-docx-anchors.js';
 
+
+
+
 /**
  * 将 mdast 转换为 docx
- * @returns {Promise<Buffer>} 
+ * @returns {Promise<Buffer>}
  */
 export default async function mdast2docx(opts = {}) {
   let {
@@ -56,13 +60,14 @@ export default async function mdast2docx(opts = {}) {
     resourceLoader,
   };
 
+
   let children = []
   let childrenList = []
 
   if (mdastList) {
     // 收集所有文档的图片资源，避免重复下载
     const globalImages = {};
-    
+
     for (const [index, mdast] of mdastList.entries()) {
       // 为每个文档创建独立的 context，避免状态污染
       const docCtx = {
@@ -76,7 +81,7 @@ export default async function mdast2docx(opts = {}) {
         image2png,
         resourceLoader,
       };
-      
+
       mdastList[index] = sanitizeHtml(mdast);
       await downloadImages(docCtx, mdastList[index]);
       buildAnchors(mdastList[index]);
@@ -84,7 +89,7 @@ export default async function mdast2docx(opts = {}) {
     }
   } else {
     mdast = sanitizeHtml(mdast);
-    
+
     await downloadImages(ctx, mdast);
     buildAnchors(mdast);
     children = await all(ctx, mdast);
@@ -107,8 +112,8 @@ export default async function mdast2docx(opts = {}) {
         page: {
           margin: {
             top: '1.76cm',    // 1.76 厘米
-            right: '1.76cm', 
-            bottom: '1.76cm', 
+            right: '1.76cm',
+            bottom: '1.76cm',
             left: '1.76cm',
           },
         },

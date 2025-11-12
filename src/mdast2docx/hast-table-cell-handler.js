@@ -17,6 +17,8 @@
 
 'use strict';
 
+import { parseStyle } from './mdast-sanitize-html.js';
+
 export default function cell(state, node) {
   const wrap = state.wrapText;
 
@@ -41,6 +43,23 @@ export default function cell(state, node) {
       data.align = node.properties.align;
     }
   }
+
+  // 提取单元格的 style 属性，特别是 width 和 background-color
+  if (node.properties?.style) {
+    const style = parseStyle(node.properties.style);
+    if (style.width) {
+      result.width = style.width; // 保存原始宽度字符串（如 "50%", "200px"）
+    }
+    if (style.backgroundColor) {
+      result.backgroundColor = style.backgroundColor; // 保存背景色
+    }
+  }
+
+  // 提取 bgcolor 属性（HTML 传统属性）
+  if (node.properties?.bgcolor) {
+    result.backgroundColor = String(node.properties.bgcolor);
+  }
+
   // eslint-disable-next-line no-param-reassign
   state.wrapText = wrap;
 

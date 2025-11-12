@@ -10,7 +10,8 @@
  * governing permissions and limitations under the License.
  */
 
-import {RequestOptions, Response} from "@adobe/helix-fetch";
+import type { RequestOptions, Response } from '@adobe/helix-fetch';
+import type { Root } from 'mdast';
 
 declare interface ImageToPngOptions {
   /**
@@ -40,24 +41,24 @@ declare type ImageToPngConverter = (opts:ImageToPngOptions) => Promise<ImageToPn
  * Loader used for loading resources for urls starting with `res:`
  */
 declare interface ResourceLoader {
-  fetch(url:string, opts:RequestOptions): Promise<Response>
+  fetch(url: string, opts: RequestOptions): Promise<Response>
 }
 
 declare interface Mdast2DocxOptions {
   /**
    * A console like logger
    */
-  log: Console;
+  log?: Console;
 
   /**
    * The content of the styles.xml file of a Word template (to override provided default)
    */
-  stylesXML: string;
+  stylesXML?: string | null;
 
   /**
    * Optional loader for (image) resources
    */
-  resourceLoader?:ResourceLoader;
+  resourceLoader?: ResourceLoader;
 
   /**
    * Optional image2png converter
@@ -67,7 +68,32 @@ declare interface Mdast2DocxOptions {
   /**
    * 给每一页新增一个居中显示的页眉文字
    */
-  pageHeader?: string
+  pageHeader?: string;
+
+  /**
+   * 单个文档的 mdast 根节点
+   */
+  mdast?: Root;
+
+  /**
+   * 文档标题，会作为 Heading1 插入，并添加分页
+   */
+  docxTitle?: string;
+
+  /**
+   * 多文档模式下的 mdast 列表
+   */
+  mdastList?: Root[];
+
+  /**
+   * 多文档模式下的标题列表，应与 mdastList 对应
+   */
+  docxTitleList?: string[];
+
+  /**
+   * Markdown 模板集合，键为模板名称，值为 Markdown 字符串
+   */
+  templates?: Record<string, string>;
 }
 
 /**
@@ -77,4 +103,4 @@ declare interface Mdast2DocxOptions {
  * @param {Mdast2DocxOptions} [opts] options
  * @returns {Promise<Buffer>} the docx
  */
-export default function mdast2docx(mdast: object, opts?: Mdast2DocxOptions): Promise<Buffer>;
+export default function mdast2docx(opts: Mdast2DocxOptions): Promise<Buffer>;

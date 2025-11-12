@@ -17,6 +17,9 @@ import { defaultHandlers, toMdast } from 'hast-util-to-mdast';
 import tableHandler from './hast-table-handler.js';
 import tableCellHandler from './hast-table-cell-handler.js';
 
+
+
+
 /**
  * Creates simple format handler
  * @param type
@@ -75,7 +78,6 @@ function unwrapParagraphs(node) {
   }
   return node;
 }
-
 /**
  * Handler for `<markdown>` elements.
  * @param {[]} mdasts array of mdast sub trees
@@ -444,5 +446,6 @@ export default function sanitizeHtml(tree) {
 
     return visit.CONTINUE;
   });
+
   return tree;
 }

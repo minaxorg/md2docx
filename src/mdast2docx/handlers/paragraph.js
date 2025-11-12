@@ -48,6 +48,8 @@ export default async function paragraph(ctx, node, parent) {
       opts.alignment = AlignmentType.START;
     } else if (ta === 'justify' || ta === 'justified') {
       opts.alignment = AlignmentType.JUSTIFIED;
+    }else if (ta === 'distributed' || ta === 'distribute') {
+      opts.alignment = AlignmentType.DISTRIBUTE;
     }
   }
 

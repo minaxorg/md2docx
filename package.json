@@ -1,6 +1,6 @@
 {
   "name": "@minax/md2docx",
-  "version": "2.4.10-alpha.1",
+  "version": "2.4.11",
   "description": "Helix Service that converts markdown to word documents",
   "main": "src/index.js",
   "type": "module",
@@ -43,6 +43,7 @@
     "mime": "4.1.0",
     "rehype-parse": "9.0.1",
     "remark-gfm": "4.0.1",
+    "remark-html": "^16.0.1",
     "remark-parse": "11.0.0",
     "unified": "11.0.5",
     "unist-util-visit": "5.0.0"

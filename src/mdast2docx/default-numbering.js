@@ -28,7 +28,6 @@ function createLevels() {
       level,
       format: formats[level % 3],
       text: `%${level + 1}${sfx[level % 3]}`,
-      alignment: AlignmentType.START,
       style: {
         paragraph: {
           indent: {
@@ -49,7 +48,6 @@ function createBulletLevels() {
       level,
       format: LevelFormat.BULLET,
       text: '-',
-      alignment: AlignmentType.START,
       style: {
         paragraph: {
           indent: {
