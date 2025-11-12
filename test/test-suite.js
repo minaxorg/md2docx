@@ -270,7 +270,7 @@ async function runAllTests() {
       filename: 'table-markdown',
       markdown: `<table>
   <tr>
-    <td><template data-template="tableMarkdownCell"></template></td>
+    <td>{{tableMarkdownCell}}</td>
   </tr>
 </table>`,
       options: {
@@ -442,12 +442,12 @@ async function runAllTests() {
       name: 'Template 占位符测试',
       filename: 'template-placeholders-html-mix',
       markdown: `<p>前置文本</p>
-<template data-template="intro"></template>
+{{intro}}
 <p>后置文本</p>
 <table>
   <tr>
     <td style="width: 50%; background-color: #ffffff">静态文本</td>
-    <td style="width: 50%; background-color: #ffffff"><template data-template="details"></template></td>
+    <td style="width: 50%; background-color: #ffffff">{{details}}</td>
   </tr>
 </table>`,
       options: {

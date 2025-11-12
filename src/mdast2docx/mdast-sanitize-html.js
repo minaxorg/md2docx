@@ -17,101 +17,10 @@ import { defaultHandlers, toMdast } from 'hast-util-to-mdast';
 // import inspect from 'unist-util-inspect';
 import tableHandler from './hast-table-handler.js';
 import tableCellHandler from './hast-table-cell-handler.js';
-import { parseWidthToTwips } from './handlers/utils.js';
 
-const hasStructuredClone = typeof globalThis.structuredClone === 'function';
 
-const cloneMdastNode = (node) => {
-  if (hasStructuredClone) {
-    return globalThis.structuredClone(node);
-  }
-  return JSON.parse(JSON.stringify(node));
-};
 
-const cloneMdastNodes = (nodes = []) => nodes.map((item) => cloneMdastNode(item));
 
-const INLINE_NODE_TYPES = new Set([
-  'text',
-  'emphasis',
-  'strong',
-  'delete',
-  'inlineCode',
-  'break',
-  'image',
-  'imageReference',
-  'link',
-  'linkReference',
-  'footnote',
-  'footnoteReference',
-  'span',
-  'fontColor',
-  'deleteWithColor',
-  'underline',
-  'subscript',
-  'superscript',
-]);
-
-const unwrapInlineParagraphNodes = (nodes = []) => {
-  const flattened = [];
-  nodes.forEach((node) => {
-    if (node && node.type === 'paragraph') {
-      const children = Array.isArray(node.children) ? node.children : [];
-      if (children.length > 0 && children.every((child) => INLINE_NODE_TYPES.has(child.type))) {
-        flattened.push(...children);
-        return;
-      }
-    }
-    flattened.push(node);
-  });
-  return flattened;
-};
-
-const normalizeTemplateName = (value) => {
-  if (typeof value === 'string') {
-    return value.trim();
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item || '')).join(' ').trim();
-  }
-  if (value === null || value === undefined) {
-    return '';
-  }
-  return String(value).trim();
-};
-
-const resolveTemplateName = (properties = {}) => {
-  if (!properties || typeof properties !== 'object') {
-    return '';
-  }
-  if ('data-template' in properties) {
-    return normalizeTemplateName(properties['data-template']);
-  }
-  if ('dataTemplate' in properties) {
-    return normalizeTemplateName(properties.dataTemplate);
-  }
-  if (properties.dataset && typeof properties.dataset === 'object') {
-    return normalizeTemplateName(properties.dataset.template);
-  }
-  return '';
-};
-
-const createTemplateHandler = (ctx) => {
-  const logger = ctx?.log ?? console;
-  return (state, node) => {
-    const templateName = resolveTemplateName(node.properties);
-    if (!templateName) {
-      logger?.warn?.('template 节点缺少 data-template 属性');
-      return [{ type: 'paragraph', children: [] }];
-    }
-    const templateNodes = ctx?.templates?.[templateName];
-    if (Array.isArray(templateNodes) && templateNodes.length > 0) {
-      const cloned = cloneMdastNodes(templateNodes);
-      return unwrapInlineParagraphNodes(cloned);
-    }
-    logger?.warn?.(`模板 "${templateName}" 未找到，已忽略该节点`);
-    return [{ type: 'paragraph', children: [] }];
-  };
-};
 /**
  * Creates simple format handler
  * @param type
@@ -524,7 +433,6 @@ export const handlers = {
  */
 export default function sanitizeHtml(tree, ctx = {}) {
   const mdInserts = [];
-  const templateHandler = createTemplateHandler(ctx);
 
   // 提前预处理一遍，将 <br> 转换为 break
   // 因为下面的操作有合并 html 节点的操作
@@ -615,7 +523,6 @@ export default function sanitizeHtml(tree, ctx = {}) {
         handlers: {
           ...defaultHandlers,
           ...handlers,
-          template: templateHandler,
           a: linkHandler,
           u: formatHandler('underline'),
           sub: formatHandler('subscript'),

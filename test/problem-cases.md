@@ -167,7 +167,7 @@ function greet(name) {
 以下段落应插入模板 `intro` 的内容：
 
 <p>段落起始。</p>
-<template data-template="intro"></template>
+{{intro}}
 <p>段落结束。</p>
 
 下表第二列应渲染模板 `details` 的内容：
@@ -175,6 +175,6 @@ function greet(name) {
 <table>
   <tr>
     <td>静态文本</td>
-    <td><template data-template="details"></template></td>
+    <td>{{details}}</td>
   </tr>
 </table>

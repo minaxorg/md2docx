@@ -4,10 +4,10 @@ import path from 'path';
 
 async function main() {
   const markdown = `<p>模板前缀</p>
-<p><template data-template="inline"></template></p>
+<p>{{inline}}</p>
 <table>
   <tr>
-    <td><template data-template="cell"></template></td>
+    <td>{{cell}}</td>
   </tr>
 </table>`;
 
