@@ -98,11 +98,6 @@ export default function table(state, node) {
     mdNode.noHeader = true;
   }
 
-  // 读取 data-noheader 属性，如果存在则不设置表头
-  if (node.properties?.['dataNoheader'] !== undefined) {
-    mdNode.noHeader = true;
-  }
-
 
   // compute the number of cells in each row, respecting the row and col spans.
   const pendingRowSpans = [];

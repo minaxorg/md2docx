@@ -20,11 +20,12 @@ import handlers from './handlers/index.js';
 import numbering from './default-numbering.js';
 import sanitizeHtml from './mdast-sanitize-html.js';
 import { openArrayBuffer } from './zipfile.js';
+import { findXMLComponent } from './utils.js';
 import downloadImages from './mdast-download-images.js';
 import { buildAnchors } from './mdast-docx-anchors.js';
 
 
-const cmToTwips = (cm) => Math.round((cm / 2.54) * 1440);
+
 
 /**
  * 将 mdast 转换为 docx
@@ -81,13 +82,13 @@ export default async function mdast2docx(opts = {}) {
         resourceLoader,
       };
 
-      mdastList[index] = sanitizeHtml(mdast, docCtx);
+      mdastList[index] = sanitizeHtml(mdast);
       await downloadImages(docCtx, mdastList[index]);
       buildAnchors(mdastList[index]);
       childrenList.push(await all(docCtx, mdastList[index]));
     }
   } else {
-    mdast = sanitizeHtml(mdast, ctx);
+    mdast = sanitizeHtml(mdast);
 
     await downloadImages(ctx, mdast);
     buildAnchors(mdast);
@@ -110,10 +111,10 @@ export default async function mdast2docx(opts = {}) {
       properties: {
         page: {
           margin: {
-            top: cmToTwips(1.76),    // 1.76 厘米
-            right: cmToTwips(1.76),
-            bottom: cmToTwips(1.76),
-            left: cmToTwips(1.76),
+            top: '1.76cm',    // 1.76 厘米
+            right: '1.76cm',
+            bottom: '1.76cm',
+            left: '1.76cm',
           },
         },
       },
@@ -160,15 +161,16 @@ export default async function mdast2docx(opts = {}) {
   cn.numId = 1;
 
   // temporary hack for problems with lists in online word
-  // 移除 docx 默认生成的 w:lvlJc，避免写出不符合规范的 start 值
   for (const nb of doc.numbering.abstractNumberingMap.values()) {
     nb.root.forEach((attr) => {
       if (attr.rootKey !== 'w:lvl') {
         return;
       }
-      const jcIdx = attr.root.findIndex((child) => child.rootKey === 'w:lvlJc');
-      if (jcIdx !== -1) {
-        attr.root.splice(jcIdx, 1);
+      const jc = findXMLComponent(attr, 'w:lvlJc');
+      if (jc) {
+        const idx = attr.root.indexOf(jc);
+        attr.root.splice(idx, 1);
+        attr.root.push(jc);
       }
     });
   }

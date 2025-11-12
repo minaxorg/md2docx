@@ -28,12 +28,15 @@ async function convertTemplatesToHtml(md = "", templates) {
     Object.entries(templates).map(async ([name, template]) => {
       if (typeof template === "string") {
         const html = await md2html(template);
-        if (replacedMd.indexOf(`{{${name}}}`) !== -1) {
-          replacedMd = replacedMd.replace(`{{${name}}}`, html);
-        }
+        templates[name] = html;
       }
     })
   );
+  Object.entries(templates).map(async ([name, template]) => {
+    if (replacedMd.indexOf(`{{${name}}}`) !== -1) {
+      replacedMd = replacedMd.replace(`{{${name}}}`, template);
+    }
+  })
 
   return replacedMd;
 }

@@ -12,7 +12,6 @@
 import { visit } from 'unist-util-visit';
 import { unified } from 'unified';
 import parse from 'rehype-parse';
-import remarkParse from 'remark-parse';
 import { defaultHandlers, toMdast } from 'hast-util-to-mdast';
 // import inspect from 'unist-util-inspect';
 import tableHandler from './hast-table-handler.js';
@@ -192,132 +191,6 @@ export function parseStyle(styleStr) {
   return styleObj;
 }
 
-const BLOCK_NODE_TYPES = new Set([
-  'blockquote','code',
-  'definition',
-  'footnoteDefinition',
-  'heading',
-  'html',
-  'list',
-  'paragraph',
-  'table',
-  'thematicBreak',
-]);
-
-const isBlockNode = (node) => Boolean(node && BLOCK_NODE_TYPES.has(node.type));
-
-const cloneParagraphNode = (sourceParagraph, children) => {
-  const clonedParagraph = {
-    type: 'paragraph',
-    children,
-  };
-
-  if (sourceParagraph.style && Object.keys(sourceParagraph.style).length > 0) {
-    clonedParagraph.style = { ...sourceParagraph.style };
-  }
-
-  if (sourceParagraph.data && Object.keys(sourceParagraph.data).length > 0) {
-    clonedParagraph.data = { ...sourceParagraph.data };
-  }
-
-  return clonedParagraph;
-};
-
-const splitParagraphFlowContent = (tree) => {
-  visit(tree, (paragraphNode, paragraphIndex, parentNode) => {
-    if (
-      !parentNode ||
-      paragraphNode.type !== 'paragraph' ||
-      !Array.isArray(paragraphNode.children)
-    ) {
-      return visit.CONTINUE;
-    }
-
-    if (!paragraphNode.children.some(isBlockNode)) {
-      return visit.CONTINUE;
-    }
-
-    const replacementNodes = [];
-    let inlineBuffer = [];
-    let originalParagraphConsumed = false;
-
-    const flushInlineBuffer = () => {
-      if (inlineBuffer.length === 0) {
-        return;
-      }
-
-      if (!originalParagraphConsumed) {
-        paragraphNode.children = inlineBuffer;
-        replacementNodes.push(paragraphNode);
-        originalParagraphConsumed = true;
-      } else {
-        replacementNodes.push(cloneParagraphNode(paragraphNode, inlineBuffer));
-      }
-
-      inlineBuffer = [];
-    };
-
-    paragraphNode.children.forEach((childNode) => {
-      if (isBlockNode(childNode)) {
-        flushInlineBuffer();
-        replacementNodes.push(childNode);
-        return;
-      }
-
-      inlineBuffer.push(childNode);
-    });
-
-    flushInlineBuffer();
-
-    if (replacementNodes.length === 0) {
-      return visit.CONTINUE;
-    }
-
-    parentNode.children.splice(paragraphIndex, 1, ...replacementNodes);
-    return paragraphIndex + replacementNodes.length;
-  });
-};
-
-const flattenParagraphChildrenForPhrasingNodes = (tree) => {
-  visit(tree, (node) => {
-    if (!node || !Array.isArray(node.children)) {
-      return visit.CONTINUE;
-    }
-
-    if (node.type !== 'paragraph' && isPhrasingParent(node)) {
-      for (let idx = 0; idx < node.children.length; idx += 1) {
-        const child = node.children[idx];
-        if (child && child.type === 'paragraph' && Array.isArray(child.children)) {
-          node.children.splice(idx, 1, ...child.children);
-          idx += child.children.length - 1;
-        }
-      }
-    }
-
-    return visit.CONTINUE;
-  });
-};
-
-const removeEmptyParagraphs = (tree) => {
-  visit(tree, (node, index, parent) => {
-    if (
-      !parent ||
-      !Number.isInteger(index) ||
-      node.type !== 'paragraph' ||
-      !Array.isArray(node.children)
-    ) {
-      return visit.CONTINUE;
-    }
-
-    if (node.children.length === 0) {
-      parent.children.splice(index, 1);
-      return index;
-    }
-
-    return visit.CONTINUE;
-  });
-};
-
 /**
  * @param {State} state
  *   State.
@@ -431,7 +304,7 @@ export const handlers = {
  * @param {object} tree
  * @returns {object} The modified (original) tree.
  */
-export default function sanitizeHtml(tree, ctx = {}) {
+export default function sanitizeHtml(tree) {
   const mdInserts = [];
 
   // 提前预处理一遍，将 <br> 转换为 break
@@ -573,10 +446,6 @@ export default function sanitizeHtml(tree, ctx = {}) {
 
     return visit.CONTINUE;
   });
-
-  splitParagraphFlowContent(tree);
-  flattenParagraphChildrenForPhrasingNodes(tree);
-  removeEmptyParagraphs(tree);
 
   return tree;
 }
