@@ -39,45 +39,56 @@ function validateFontSize(value, name) {
     throw new Error(`${name} 必须是大于 0 的整数（半磅单位，例如 22 = 11pt）`);
   }
 }
-
 function applyStyleOptions(stylesXML, styleOptions) {
   let result = stylesXML;
-
   const { defaultFontSize, headingFontSizes = {} } = styleOptions;
 
+  // 1️⃣ 修改全局默认字号（docDefaults）
   if (defaultFontSize !== undefined) {
     const size = defaultFontSize;
-    // 1) 全局默认字号（docDefaults）
-    result = result.replace(/(<w:docDefaults>.*?<w:sz w:val=")(\d+)(".*?<\/w:docDefaults>)/s, `$1${size}$3`);
-    result = result.replace(/(<w:docDefaults>.*?<w:szCs w:val=")(\d+)(".*?<\/w:docDefaults>)/s, `$1${size}$3`);
+    result = result.replace(
+      /(<w:docDefaults>.*?<w:sz w:val=")(\d+)(".*?<\/w:docDefaults>)/s,
+      `$1${size}$3`
+    );
+    result = result.replace(
+      /(<w:docDefaults>.*?<w:szCs w:val=")(\d+)(".*?<\/w:docDefaults>)/s,
+      `$1${size}$3`
+    );
 
-    // 2) 正文样式 Normal（段落样式），确保“无显式字号”的正文也用默认字号
+    // 2️⃣ 修改正文 Normal 样式（段落）
     const normalRegex = /(<w:style[^>]*w:type="paragraph"[^>]*w:styleId="Normal"[^>]*>.*?<w:rPr>.*?<w:sz w:val=")(\d+)(".*?<\/w:rPr>.*?<\/w:style>)/s;
     const normalRegexCs = /(<w:style[^>]*w:type="paragraph"[^>]*w:styleId="Normal"[^>]*>.*?<w:rPr>.*?<w:szCs w:val=")(\d+)(".*?<\/w:rPr>.*?<\/w:style>)/s;
     result = result.replace(normalRegex, `$1${size}$3`);
     result = result.replace(normalRegexCs, `$1${size}$3`);
 
-    // 3) 表格样式 PageBlock（我们生成表格时使用的样式），让表格里的“未显式设置字号”的文字也走默认字号
+    // 3️⃣ 表格样式 PageBlock
     const pageBlockRegex = /(<w:style[^>]*w:type="table"[^>]*w:styleId="PageBlock"[^>]*>.*?<w:rPr>.*?<w:sz w:val=")(\d+)(".*?<\/w:rPr>.*?<\/w:style>)/s;
     const pageBlockRegexCs = /(<w:style[^>]*w:type="table"[^>]*w:styleId="PageBlock"[^>]*>.*?<w:rPr>.*?<w:szCs w:val=")(\d+)(".*?<\/w:rPr>.*?<\/w:style>)/s;
     result = result.replace(pageBlockRegex, `$1${size}$3`);
     result = result.replace(pageBlockRegexCs, `$1${size}$3`);
   }
 
+  // 4️⃣ 修改或插入标题样式（Heading1 ~ Heading6）
   for (let level = 1; level <= 6; level += 1) {
     const key = `h${level}`;
-    if (headingFontSizes[key] === undefined) {
-      continue;
-    }
     const size = headingFontSizes[key];
-    const regex = new RegExp(`(<w:style[^>]*styleId="${level}"[^>]*>.*?<w:sz w:val=")(\\d+)(".*?<\/w:style>)`, 's');
-    const regexCs = new RegExp(`(<w:style[^>]*styleId="${level}"[^>]*>.*?<w:szCs w:val=")(\\d+)(".*?<\/w:style>)`, 's');
+    if (size === undefined) continue;
+
+    const regex = new RegExp(
+      `(<w:style[^>]*w:styleId="Heading${level}"[^>]*>.*?<w:rPr>.*?<w:sz w:val=")(\\d+)(".*?<\\/w:rPr>.*?<\\/w:style>)`,
+      "s"
+    );
+    const regexCs = new RegExp(
+      `(<w:style[^>]*w:styleId="Heading${level}"[^>]*>.*?<w:rPr>.*?<w:szCs w:val=")(\\d+)(".*?<\\/w:rPr>.*?<\\/w:style>)`,
+      "s"
+    );
     result = result.replace(regex, `$1${size}$3`);
     result = result.replace(regexCs, `$1${size}$3`);
   }
 
   return result;
 }
+
 
 export default async function mdast2docx(opts = {}) {
   let {
@@ -174,9 +185,11 @@ export default async function mdast2docx(opts = {}) {
     const templateDoc = await readFile(path.resolve(__dirname, 'template.docx'));
     const zip = await openArrayBuffer(templateDoc);
     stylesXML = await zip.read('word/styles.xml', 'utf-8');
+
     if (hasStyleOverrides) {
-      stylesXML = applyStyleOptions(stylesXML, normalizedStyleOptions);
-    }
+      const newStylesXML = await readFile(path.resolve(__dirname, 'styles.xml'), 'utf-8')
+      stylesXML = applyStyleOptions(newStylesXML, normalizedStyleOptions);
+    } 
   } else if (hasStyleOverrides) {
     log?.warn?.('同时提供 stylesXML 与 styleOptions，已优先使用 stylesXML，忽略 styleOptions');
   }
