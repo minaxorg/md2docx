@@ -47,8 +47,21 @@ function applyStyleOptions(stylesXML, styleOptions) {
 
   if (defaultFontSize !== undefined) {
     const size = defaultFontSize;
+    // 1) 全局默认字号（docDefaults）
     result = result.replace(/(<w:docDefaults>.*?<w:sz w:val=")(\d+)(".*?<\/w:docDefaults>)/s, `$1${size}$3`);
     result = result.replace(/(<w:docDefaults>.*?<w:szCs w:val=")(\d+)(".*?<\/w:docDefaults>)/s, `$1${size}$3`);
+
+    // 2) 正文样式 Normal（段落样式），确保“无显式字号”的正文也用默认字号
+    const normalRegex = /(<w:style[^>]*w:type="paragraph"[^>]*w:styleId="Normal"[^>]*>.*?<w:rPr>.*?<w:sz w:val=")(\d+)(".*?<\/w:rPr>.*?<\/w:style>)/s;
+    const normalRegexCs = /(<w:style[^>]*w:type="paragraph"[^>]*w:styleId="Normal"[^>]*>.*?<w:rPr>.*?<w:szCs w:val=")(\d+)(".*?<\/w:rPr>.*?<\/w:style>)/s;
+    result = result.replace(normalRegex, `$1${size}$3`);
+    result = result.replace(normalRegexCs, `$1${size}$3`);
+
+    // 3) 表格样式 PageBlock（我们生成表格时使用的样式），让表格里的“未显式设置字号”的文字也走默认字号
+    const pageBlockRegex = /(<w:style[^>]*w:type="table"[^>]*w:styleId="PageBlock"[^>]*>.*?<w:rPr>.*?<w:sz w:val=")(\d+)(".*?<\/w:rPr>.*?<\/w:style>)/s;
+    const pageBlockRegexCs = /(<w:style[^>]*w:type="table"[^>]*w:styleId="PageBlock"[^>]*>.*?<w:rPr>.*?<w:szCs w:val=")(\d+)(".*?<\/w:rPr>.*?<\/w:style>)/s;
+    result = result.replace(pageBlockRegex, `$1${size}$3`);
+    result = result.replace(pageBlockRegexCs, `$1${size}$3`);
   }
 
   for (let level = 1; level <= 6; level += 1) {
