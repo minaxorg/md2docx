@@ -130,6 +130,7 @@ function isPhrasingParent(node) {
     'tableCell',
     'delete',
     'footnote',
+    'span',
   ].includes(node.type);
 }
 
@@ -414,7 +415,7 @@ export default function sanitizeHtml(tree) {
         let lastParagraph;
         for (let idx = 0; idx < mdast.children.length; idx += 1) {
           const child = mdast.children[idx];
-          if (child.type === 'underline' || child.type === 'subscript' || child.type === 'superscript') {
+          if (child.type === 'underline' || child.type === 'subscript' || child.type === 'superscript' || child.type === 'span') {
             unwrapParagraphs(child);
             if (!lastParagraph) {
               lastParagraph = {
