@@ -132,7 +132,6 @@ function isPhrasingParent(node) {
     'tableCell',
     'delete',
     'footnote',
-    'span'
   ].includes(node.type);
 }
 
