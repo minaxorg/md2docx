@@ -302,6 +302,15 @@ async function runAllTests() {
       ]
     },
     {
+      name: 'Div 包裹 Font + Bold 居中场景',
+      filename: 'div-font-bold-center',
+      markdown: `<div align="center"><font size="5" face="黑体"><b>当时只道是寻常</b></font></div>`,
+      validations: [
+        { type: 'hasBold', description: '嵌套 <b> 渲染为加粗' },
+        { type: 'hasText', value: '当时只道是寻常', description: '文本内容存在' },
+      ]
+    },
+    {
       name: 'Font 标签颜色测试',
       filename: 'font-colors',
       markdown: `<font color="red">红色</font> <font color="blue">蓝色</font> <font color="green">绿色</font>
