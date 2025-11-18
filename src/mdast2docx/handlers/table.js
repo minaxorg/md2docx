@@ -111,8 +111,11 @@ export default async function table(ctx, node) {
 
   ctx.table = oldTable;
 
+  // 如果设置了 noHeader，不使用表格样式，避免应用 firstRow 样式
+  const tableStyle = node.noHeader ? undefined : 'PageBlock';
+
   const tbl = new Table({
-    style: 'PageBlock',
+    style: tableStyle,
     rows,
     columnWidths,
     width: {
