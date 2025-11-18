@@ -124,6 +124,23 @@ const validators = {
     if (!firstRowMatch) return false;
     return !firstRowMatch[1].includes('F4CCCD');
   },
+
+  // 检查表格第一行文本是否不加粗（用于验证 data-noheader 功能）
+  hasTableFirstRowNotBold: (xml) => {
+    // 找到第一个表格的第一行
+    const tableMatch = xml.match(/<w:tbl>(.*?)<\/w:tbl>/s);
+    if (!tableMatch) return false;
+
+    const tableContent = tableMatch[1];
+    const firstRowMatch = tableContent.match(/<w:tr>(.*?)<\/w:tr>/s);
+    if (!firstRowMatch) return false;
+
+    const firstRowContent = firstRowMatch[1];
+    // 检查第一行中是否有加粗标记
+    // 如果第一行包含 <w:b/> 或 <w:b ，说明有加粗，返回 false
+    // 如果第一行不包含加粗标记，说明不加粗，返回 true
+    return !firstRowContent.includes('<w:b/>') && !firstRowContent.includes('<w:b ');
+  },
 };
 
 /**
@@ -262,6 +279,29 @@ async function runAllTests() {
         { type: 'hasText', value: '左列', description: '包含左列文本' },
         { type: 'hasText', value: '右列', description: '包含右列文本' },
         { type: 'hasNoTableHeader', description: '表格无表头样式' },
+      ]
+    },
+
+    {
+      name: '表格内正文粗细测试',
+      filename: 'table-text-weight',
+      markdown: `<table data-noheader="true">
+  <tr>
+    <td style="width: 50%">普通文本第一列</td>
+    <td style="width: 50%">普通文本第二列</td>
+  </tr>
+  <tr>
+    <td>第二行普通文本</td>
+    <td><strong>第二行加粗文本</strong></td>
+  </tr>
+</table>`,
+      validations: [
+        { type: 'hasTable', description: '包含表格' },
+        { type: 'hasText', value: '普通文本第一列', description: '包含第一列文本' },
+        { type: 'hasText', value: '普通文本第二列', description: '包含第二列文本' },
+        { type: 'hasTableFirstRowNotBold', description: '表格第一行文本不加粗（data-noheader 生效）' },
+        { type: 'hasBold', description: '表格内加粗文本正常渲染（第二行加粗文本）' },
+        { type: 'hasNoTableHeader', description: '表格无表头背景色' },
       ]
     },
 
