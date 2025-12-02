@@ -119,8 +119,8 @@ export default async function table(ctx, node) {
     rows,
     columnWidths,
     width: {
-      size: Math.round(tableWidthTwips),
-      type: WidthType.DXA,
+      size: 100,
+      type: WidthType.PERCENTAGE,
     },
     layout: hasWidthStyle ? TableLayoutType.FIXED : TableLayoutType.AUTOFIT,
   });
