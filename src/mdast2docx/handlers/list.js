@@ -15,7 +15,13 @@ export default async function list(ctx, node) {
   const { ordered, start } = node;
   ctx.listLevel += 1;
   let lst = ctx.lists[ctx.listLevel];
-  if (!lst) {
+
+  // 如果该层级已有列表，说明是新列表，需要创建新的 instance 并重置编号
+  if (lst) {
+    lst.instance += 1;
+    lst.number = start || 1;
+  } else {
+    // 首次创建该层级的列表
     lst = {
       level: ctx.listLevel,
       number: start || 1,
@@ -23,10 +29,7 @@ export default async function list(ctx, node) {
     };
     ctx.lists[ctx.listLevel] = lst;
   }
-  if (start && start < lst.number) {
-    lst.number = start;
-    lst.instance += 1;
-  }
+
   if (ordered) {
     lst.numbering = 'default-numbering';
   } else {

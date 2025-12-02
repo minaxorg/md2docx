@@ -106,6 +106,47 @@ const validators = {
     return xml.includes('<w:numPr>') || xml.includes('<w:bullet>');
   },
 
+  // 检查有序列表编号是否正确重置（通过检查是否有非列表段落分隔列表组）
+  hasListInstances: (xml, expected = 2) => {
+    // 查找所有段落
+    const allParagraphs = xml.match(/<w:p>.*?<\/w:p>/gs) || [];
+    if (allParagraphs.length < 2) return false;
+
+    // 统计列表组：连续的列表段落算一组，被非列表段落分隔的算不同组
+    let listGroups = 0;
+    let inList = false;
+    let lastWasList = false;
+
+    for (const para of allParagraphs) {
+      const hasNumPr = para.includes('<w:numPr>');
+      const hasText = para.includes('<w:t>') && !para.match(/<w:t[^>]*>\s*<\/w:t>/);
+
+      if (hasNumPr) {
+        // 这是列表段落
+        if (!inList) {
+          // 开始新的列表组
+          listGroups++;
+          inList = true;
+        }
+        lastWasList = true;
+      } else if (hasText) {
+        // 这是有内容的非列表段落，结束当前列表组
+        if (inList) {
+          inList = false;
+        }
+        lastWasList = false;
+      } else {
+        // 空段落，如果之前是列表，这可能是一个分隔
+        if (lastWasList) {
+          inList = false;
+        }
+      }
+    }
+
+    // 如果有多个列表组，说明编号被重置了
+    return listGroups >= expected;
+  },
+
   // 检查是否包含引用
   hasQuote: (xml) => {
     return xml.includes('w:val="Quote"');
@@ -400,6 +441,21 @@ async function runAllTests() {
         { type: 'hasList', description: '包含列表' },
         { type: 'hasText', value: '无序列表项 1', description: '包含无序列表文本' },
         { type: 'hasText', value: '有序列表项 1', description: '包含有序列表文本' },
+      ]
+    },
+
+    {
+      name: '多有序列表编号重置测试',
+      filename: 'lists-multi-ordered',
+      markdown: `1. 第一组第 1 项
+2. 第一组第 2 项
+## 测试标题
+1. 第二组第 1 项
+2. 第二组第 2 项`,
+      validations: [
+        { type: 'hasList', description: '包含有序列表' },
+        // 期望至少有两个不同的 numId，表示有两个独立的列表实例
+        { type: 'hasListInstances', value: 2, description: '存在两个独立的有序列表实例（编号应分别从 1 开始）' },
       ]
     },
 

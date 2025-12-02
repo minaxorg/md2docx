@@ -21,8 +21,30 @@ function analyzeDocx(filePath, buffer) {
 
   const headingFontSizes = {};
   for (let level = 1; level <= 6; level += 1) {
-    const match = stylesXml.match(new RegExp(`<w:style[^>]*styleId="${level}"[^>]*>.*?<w:sz w:val="(\\d+)"`, 's'));
-    headingFontSizes[`h${level}`] = match ? parseInt(match[1], 10) : undefined;
+    const key = `h${level}`;
+    let size;
+
+    // 1️⃣ 优先读取 Heading1..Heading6（运行时真正使用的样式）
+    const headingMatch = stylesXml.match(
+      new RegExp(
+        `<w:style[^>]*w:styleId="Heading${level}"[^>]*>.*?<w:rPr>.*?<w:sz w:val="(\\d+)"`,
+        's'
+      )
+    );
+    if (headingMatch) {
+      size = parseInt(headingMatch[1], 10);
+    } else {
+      // 2️⃣ 兼容旧模板：回退读取 styleId="1".."6"
+      const legacyMatch = stylesXml.match(
+        new RegExp(
+          `<w:style[^>]*w:styleId="${level}"[^>]*>.*?<w:rPr>.*?<w:sz w:val="(\\d+)"`,
+          's'
+        )
+      );
+      size = legacyMatch ? parseInt(legacyMatch[1], 10) : undefined;
+    }
+
+    headingFontSizes[key] = size;
   }
 
   const paragraphCount = (documentXml.match(/<w:p>/g) || []).length;
