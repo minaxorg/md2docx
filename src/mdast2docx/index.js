@@ -160,6 +160,7 @@ export default async function mdast2docx(opts = {}) {
         images: globalImages, // 共享图片资源，避免重复下载
         listLevel: -1, // 重置列表级别
         lists: [], // 重置列表状态
+        docIndex: index, // 文档索引，用于确保 instance 的唯一性
         log,
         image2png,
         resourceLoader,
@@ -189,7 +190,7 @@ export default async function mdast2docx(opts = {}) {
     if (hasStyleOverrides) {
       const newStylesXML = await readFile(path.resolve(__dirname, 'styles.xml'), 'utf-8')
       stylesXML = applyStyleOptions(newStylesXML, normalizedStyleOptions);
-    } 
+    }
   } else if (hasStyleOverrides) {
     log?.warn?.('同时提供 stylesXML 与 styleOptions，已优先使用 stylesXML，忽略 styleOptions');
   }

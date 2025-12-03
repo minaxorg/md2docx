@@ -25,6 +25,7 @@ async function runAllTests() {
     suite: null,
     existing: null,
     styles: null,
+    list: null,
   };
 
   // 运行测试套件
@@ -64,13 +65,26 @@ async function runAllTests() {
     results.existing = { success: false, error: error.message };
   }
 
+  console.log('\n');
+
+  // 运行列表功能测试
+  console.log('4. 运行列表功能测试 (testList.js --list-test)...');
+  console.log('-'.repeat(70));
+  try {
+    execSync('node test/testList.js --list-test', { stdio: 'inherit' });
+    results.list = { success: true };
+  } catch (error) {
+    console.error('✗ 列表功能测试运行失败');
+    results.list = { success: false, error: error.message };
+  }
+
   // 总结
   console.log('\n');
   console.log('='.repeat(70));
   console.log('测试完成');
   console.log('='.repeat(70));
 
-  const allSuccess = results.suite?.success && results.styles?.success && results.existing?.success;
+  const allSuccess = results.suite?.success && results.styles?.success && results.existing?.success && results.list?.success;
 
   if (allSuccess) {
     console.log('✓ 所有测试通过！');
@@ -84,6 +98,9 @@ async function runAllTests() {
     }
     if (!results.existing?.success) {
       console.log('  - 现有文件测试失败');
+    }
+    if (!results.list?.success) {
+      console.log('  - 列表功能测试失败');
     }
   }
 
