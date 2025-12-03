@@ -61,11 +61,7 @@ export default async function paragraph(ctx, node, parent) {
         level: list.level,
         instance: list.instance,
       };
-      // 只在每个新列表的第一项时传递 start，确保从正确的起始编号开始
-      if (list.isFirstItem) {
-        opts.numbering.start = list.startNumber;
-        list.isFirstItem = false;
-      }
+      list.number += 1;
     } else {
       opts.bullet = {
         level: list.level,
