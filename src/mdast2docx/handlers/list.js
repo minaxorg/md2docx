@@ -19,22 +19,18 @@ export default async function list(ctx, node) {
   // 如果该层级已有列表，说明是新列表，需要创建新的 instance 并重置编号
   const docIndex = ctx.docIndex || 0; // 获取文档索引，默认为 0（单文档模式）
   const instanceBase = docIndex * 10000; // 每个文档使用 10000 的偏移量
-
   if (lst) {
     lst.instance += 1;
-    lst.startNumber = start || 1;
-    lst.isFirstItem = true;
+    lst.number = start || 1;
   } else {
     // 首次创建该层级的列表
     lst = {
       level: ctx.listLevel,
-      startNumber: start || 1,
+      number: start || 1,
       instance: instanceBase + 1, // 使用文档偏移量
-      isFirstItem: true,
     };
     ctx.lists[ctx.listLevel] = lst;
   }
-
   if (ordered) {
     lst.numbering = 'default-numbering';
   } else {
