@@ -1,7 +1,7 @@
 import md2docx from '../src/md2docx/index.js';
 import fs from 'fs';
-import { execSync } from 'child_process';
 import path from 'path';
+import JSZip from 'jszip';
 
 /**
  * 测试现有的 Markdown 文件
@@ -37,14 +37,9 @@ async function testFile(inputFile, expectedFeatures) {
     console.log(`✓ 转换成功`);
     console.log(`输出文件: ${outputFile}`);
 
-    // 解压并校验
-    if (fs.existsSync(extractDir)) {
-      fs.rmSync(extractDir, { recursive: true, force: true });
-    }
-    execSync(`powershell -Command "Expand-Archive -Path '${zipFile}' -DestinationPath '${extractDir}'"`, { stdio: 'ignore' });
-
-    const xmlPath = path.join(extractDir, 'word', 'document.xml');
-    const xml = fs.readFileSync(xmlPath, 'utf-8');
+    // 使用 JSZip 读取 document.xml
+    const zip = await JSZip.loadAsync(result);
+    const xml = await zip.file('word/document.xml').async('string');
 
     // 基本统计
     console.log(`\n基本统计:`);
@@ -53,6 +48,8 @@ async function testFile(inputFile, expectedFeatures) {
     console.log(`  图片数: ${(xml.match(/<w:drawing>/g) || []).length}`);
 
     // 特性检测
+    let allFeaturesPassed = true;
+    const failedFeatures = [];
     if (expectedFeatures && expectedFeatures.length > 0) {
       console.log(`\n特性检测:`);
       expectedFeatures.forEach(feature => {
@@ -60,14 +57,22 @@ async function testFile(inputFile, expectedFeatures) {
         const passed = feature.negate ? !exists : exists;
         const status = passed ? '✓' : '✗';
         console.log(`  ${status} ${feature.description}`);
+        if (!passed) {
+          allFeaturesPassed = false;
+          failedFeatures.push(feature.description);
+        }
       });
     }
 
-    // 清理临时文件
-    fs.unlinkSync(zipFile);
-    fs.rmSync(extractDir, { recursive: true, force: true });
+    // 清理临时文件 (不再需要)
+    // fs.unlinkSync(zipFile);
+    // fs.rmSync(extractDir, { recursive: true, force: true });
 
-    return { success: true, outputFile };
+    return {
+      success: allFeaturesPassed,
+      outputFile,
+      failedFeatures: failedFeatures.length > 0 ? failedFeatures : undefined,
+    };
 
   } catch (error) {
     console.error(`\n❌ 测试失败: ${error.message}`);
@@ -99,7 +104,7 @@ async function runAllFileTests() {
       file: path.join(testDir, 'testLayout.md'),
       features: [
         { pattern: '<w:tbl>', description: '包含表格' },
-        { pattern: 'Heading2', description: '包含标题' },
+        { pattern: 'Heading4', description: '包含 H4 标题（HTML h4 标签）' },
         { pattern: 'FFFFFF', description: '包含白色背景' },
         { pattern: 'F4CCCD', description: '表格无表头（需检查）', negate: true },
       ]
@@ -140,13 +145,27 @@ async function runAllFileTests() {
   console.log(`✗ 失败: ${failCount}`);
 
   if (failCount > 0) {
-    console.log(`\n失败的文件:`);
-    results.filter(r => !r.success).forEach(r => {
-      console.log(`  - ${path.basename(r.file)}: ${r.error}`);
+    console.log(`\n失败的测试用例 (${failCount} 个):`);
+    results.filter(r => !r.success).forEach((r, index) => {
+      console.log(`  ${index + 1}. ${path.basename(r.file)}`);
+      if (r.failedFeatures && r.failedFeatures.length > 0) {
+        console.log(`     失败的特性检测:`);
+        r.failedFeatures.forEach(feature => {
+          console.log(`       - ${feature}`);
+        });
+      }
+      if (r.error) {
+        console.log(`     错误: ${r.error}`);
+      }
     });
   }
 
   console.log(`\n所有输出文件位于: test/output/`);
+
+  // 如果有失败的测试，设置退出码为 1
+  if (failCount > 0) {
+    process.exitCode = 1;
+  }
 }
 
 // 运行测试

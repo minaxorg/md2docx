@@ -12,6 +12,7 @@
 
 import type { RequestOptions, Response } from '@adobe/helix-fetch';
 import type { Root } from 'mdast';
+import type { SectionType } from 'docx';
 
 declare interface ImageToPngOptions {
   /**
@@ -116,6 +117,19 @@ declare interface Mdast2DocxOptions {
       h6?: number
     }
   }
+
+  /**
+   * 多文档模式下的分节符类型
+   * 可选值：
+   * - SectionType.CONTINUOUS: 连续分节（不分页，在同一页继续）
+   * - SectionType.NEXT_PAGE: 下一页分节（强制分页到下一页）
+   * - SectionType.NEXT_COLUMN: 下一列分节（用于分栏布局）
+   * - SectionType.ODD_PAGE: 奇数页分节（默认，分页到下一个奇数页）
+   * - SectionType.EVEN_PAGE: 偶数页分节（分页到下一个偶数页）
+   *
+   * 默认值：SectionType.ODD_PAGE
+   */
+  sectionType?: SectionType
 }
 
 /**

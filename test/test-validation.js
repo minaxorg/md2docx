@@ -1,7 +1,7 @@
 import md2docx from '../src/md2docx/index.js';
 import fs from 'fs';
-import { execSync } from 'child_process';
 import path from 'path';
+import JSZip from 'jszip';
 
 /**
  * 测试用例配置
@@ -117,20 +117,12 @@ async function runTest(testCase, index) {
 
     // 保存文件
     const outputFile = `test-output-${index + 1}.docx`;
-    const zipFile = `test-output-${index + 1}.zip`;
-    const extractDir = `test-output-${index + 1}-extracted`;
 
     fs.writeFileSync(outputFile, result);
-    fs.writeFileSync(zipFile, result);
 
-    // 解压并读取 document.xml
-    if (fs.existsSync(extractDir)) {
-      fs.rmSync(extractDir, { recursive: true, force: true });
-    }
-    execSync(`powershell -Command "Expand-Archive -Path ${zipFile} -DestinationPath ${extractDir}"`, { stdio: 'ignore' });
-
-    const xmlPath = path.join(extractDir, 'word', 'document.xml');
-    const xml = fs.readFileSync(xmlPath, 'utf-8');
+    // 使用 JSZip 读取 document.xml
+    const zip = await JSZip.loadAsync(result);
+    const xml = await zip.file('word/document.xml').async('string');
 
     // 运行校验
     let passed = 0;
@@ -163,9 +155,9 @@ async function runTest(testCase, index) {
 
     console.log(`\n结果: ${passed} 通过, ${failed} 失败`);
 
-    // 清理临时文件
-    fs.unlinkSync(zipFile);
-    fs.rmSync(extractDir, { recursive: true, force: true });
+    // 清理临时文件 (不再需要)
+    // fs.unlinkSync(zipFile);
+    // fs.rmSync(extractDir, { recursive: true, force: true });
 
     return { passed, failed, outputFile };
 
