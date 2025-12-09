@@ -1,20 +1,13 @@
 import md2docx from '../src/md2docx/index.js';
 import fs from 'fs';
-import { execSync } from 'child_process';
 import path from 'path';
+import JSZip from 'jszip';
 
-function analyzeDocx(filePath, buffer) {
-  const zipFile = filePath.replace('.docx', '.zip');
-  const extractDir = filePath.replace('.docx', '-extracted');
-
-  fs.copyFileSync(filePath, zipFile);
-  if (fs.existsSync(extractDir)) {
-    fs.rmSync(extractDir, { recursive: true, force: true });
-  }
-  execSync(`powershell -Command "Expand-Archive -Path '${zipFile}' -DestinationPath '${extractDir}'"`, { stdio: 'ignore' });
-
-  const stylesXml = fs.readFileSync(path.join(extractDir, 'word', 'styles.xml'), 'utf-8');
-  const documentXml = fs.readFileSync(path.join(extractDir, 'word', 'document.xml'), 'utf-8');
+async function analyzeDocx(filePath, buffer) {
+  // 使用 JSZip 读取内容
+  const zip = await JSZip.loadAsync(buffer);
+  const stylesXml = await zip.file('word/styles.xml').async('string');
+  const documentXml = await zip.file('word/document.xml').async('string');
 
   const defaultSizeMatch = stylesXml.match(/<w:docDefaults>.*?<w:sz w:val="(\d+)"\/>/s);
   const defaultSize = defaultSizeMatch ? parseInt(defaultSizeMatch[1], 10) : undefined;
@@ -49,8 +42,8 @@ function analyzeDocx(filePath, buffer) {
 
   const paragraphCount = (documentXml.match(/<w:p>/g) || []).length;
 
-  fs.unlinkSync(zipFile);
-  fs.rmSync(extractDir, { recursive: true, force: true });
+  // fs.unlinkSync(zipFile);
+  // fs.rmSync(extractDir, { recursive: true, force: true });
 
   return {
     defaultSize,
@@ -174,7 +167,7 @@ async function testCustomStyles() {
     fs.writeFileSync(docxPath, buffer);
     console.log('✓ 生成文件:', docxPath);
 
-    const analysis = analyzeDocx(docxPath, buffer);
+    const analysis = await analyzeDocx(docxPath, buffer);
 
     const checks = [];
     let pass = true;
@@ -228,7 +221,30 @@ async function testCustomStyles() {
 
   console.log('\n最终结论:');
   console.log(`  ${passed}/${reports.length} 个场景通过测试`);
+
+  // 列出失败的测试用例
+  const failedReports = reports.filter(r => !r.pass);
+  if (failedReports.length > 0) {
+    console.log(`\n失败的测试用例 (${failedReports.length} 个):`);
+    failedReports.forEach((report, index) => {
+      console.log(`  ${index + 1}. ${report.name}`);
+      const failedChecks = report.checks.filter(c => !c.ok);
+      if (failedChecks.length > 0) {
+        failedChecks.forEach(check => {
+          console.log(`     - ${check.label}: 实际 ${check.actual ?? '未找到'}, 期望 ${check.expected}`);
+        });
+      }
+    });
+  }
+
   console.log('='.repeat(70));
+
+  // 如果有失败的测试，设置退出码为 1
+  if (passed < reports.length) {
+    process.exitCode = 1;
+  }
+
+  return { passed, total: reports.length, reports };
 }
 
 (async () => {

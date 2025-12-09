@@ -12,7 +12,7 @@
 import { readFile } from 'fs/promises';
 import url from 'url';
 import path from 'path';
-import { Document, Packer, Header, Paragraph, TextRun, AlignmentType } from 'docx';
+import { Document, Packer, Header, Paragraph, TextRun, AlignmentType, SectionType } from 'docx';
 
 
 import all from './all.js';
@@ -103,6 +103,8 @@ export default async function mdast2docx(opts = {}) {
     docxTitleList,
     stylesXML = null,
     styleOptions = undefined,
+    /** 多文档模式下的分节符类型，可选值：SectionType.CONTINUOUS, SectionType.NEXT_PAGE, SectionType.ODD_PAGE, SectionType.EVEN_PAGE，默认为 SectionType.ODD_PAGE */
+    sectionType = SectionType.ODD_PAGE,
   } = opts;
 
   const normalizedStyleOptions = {
@@ -195,14 +197,16 @@ export default async function mdast2docx(opts = {}) {
     log?.warn?.('同时提供 stylesXML 与 styleOptions，已优先使用 stylesXML，忽略 styleOptions');
   }
 
-  const doc = new Document({
-    numbering,
-    externalStyles: stylesXML,
-    sections: [{
+  // 构建 sections 数组
+  const sections = [];
+
+  if (!mdastList) {
+    // 单文档模式：只有一个 section
+    sections.push({
       properties: {
         page: {
           margin: {
-            top: '1.76cm',    // 1.76 厘米
+            top: '1.76cm',
             right: '1.76cm',
             bottom: '1.76cm',
             left: '1.76cm',
@@ -224,26 +228,62 @@ export default async function mdast2docx(opts = {}) {
           ]
         })
       } : undefined,
-      children: !mdastList ? [
+      children: [
         docxTitle && new Paragraph({
           text: docxTitle,
           heading: 'Heading1',
-          pageBreakBefore: true,
           alignment: AlignmentType.CENTER
         }),
         ...children,
-      ].filter(Boolean) : childrenList.map((children, index) => {
-        return [
+      ].filter(Boolean),
+    });
+  } else {
+    // 多文档模式：每个文档一个 section，后续文档使用奇数页分节符
+    childrenList.forEach((children, index) => {
+      sections.push({
+        properties: {
+          page: {
+            margin: {
+              top: '1.76cm',
+              right: '1.76cm',
+              bottom: '1.76cm',
+              left: '1.76cm',
+            },
+          },
+          // 第一个 section 保持默认，后续 section 使用配置的分节符类型
+          type: index === 0 ? undefined : sectionType,
+        },
+        headers: pageHeader ? {
+          default: new Header({
+            children: [
+              new Paragraph({
+                children: [
+                  new TextRun({
+                    text: pageHeader,
+                    bold: true
+                  })
+                ],
+                alignment: AlignmentType.CENTER
+              })
+            ]
+          })
+        } : undefined,
+        children: [
           docxTitleList[index] && new Paragraph({
             text: docxTitleList[index],
             heading: 'Heading1',
-            pageBreakBefore: true,
             alignment: AlignmentType.CENTER
           }),
           ...children,
-        ].filter(Boolean)
-      }).flat(),
-    }],
+        ].filter(Boolean),
+      });
+    });
+  }
+
+  const doc = new Document({
+    numbering,
+    externalStyles: stylesXML,
+    sections,
   });
 
   // temporary hack for problems with online word

@@ -1,7 +1,7 @@
 import md2docx from '../src/md2docx/index.js';
 import fs from 'fs';
-import { execSync } from 'child_process';
 import path from 'path';
+import JSZip from 'jszip';
 
 /**
  * 校验器集合
@@ -106,45 +106,20 @@ const validators = {
     return xml.includes('<w:numPr>') || xml.includes('<w:bullet>');
   },
 
-  // 检查有序列表编号是否正确重置（通过检查是否有非列表段落分隔列表组）
+  // 检查有序列表编号是否正确重置（通过检查不同的 numId）
   hasListInstances: (xml, expected = 2) => {
-    // 查找所有段落
-    const allParagraphs = xml.match(/<w:p>.*?<\/w:p>/gs) || [];
-    if (allParagraphs.length < 2) return false;
+    // 提取所有 w:numId 的值
+    // Word XML 中，每个独立的列表实例通常会有不同的 numId
+    const regex = /<w:numId w:val="(\d+)"/g;
+    const matches = [...xml.matchAll(regex)];
 
-    // 统计列表组：连续的列表段落算一组，被非列表段落分隔的算不同组
-    let listGroups = 0;
-    let inList = false;
-    let lastWasList = false;
+    if (matches.length === 0) return false;
 
-    for (const para of allParagraphs) {
-      const hasNumPr = para.includes('<w:numPr>');
-      const hasText = para.includes('<w:t>') && !para.match(/<w:t[^>]*>\s*<\/w:t>/);
+    // 提取 ID 并去重
+    const numIds = new Set(matches.map(m => m[1]));
 
-      if (hasNumPr) {
-        // 这是列表段落
-        if (!inList) {
-          // 开始新的列表组
-          listGroups++;
-          inList = true;
-        }
-        lastWasList = true;
-      } else if (hasText) {
-        // 这是有内容的非列表段落，结束当前列表组
-        if (inList) {
-          inList = false;
-        }
-        lastWasList = false;
-      } else {
-        // 空段落，如果之前是列表，这可能是一个分隔
-        if (lastWasList) {
-          inList = false;
-        }
-      }
-    }
-
-    // 如果有多个列表组，说明编号被重置了
-    return listGroups >= expected;
+    // 检查不同 ID 的数量是否达到预期
+    return numIds.size >= expected;
   },
 
   // 检查是否包含引用
@@ -202,24 +177,17 @@ async function runTest(testCase, index, outputDir) {
 
     // 保存文件
     const outputFile = path.join(outputDir, `${testCase.filename || `test-${index + 1}`}.docx`);
-    const zipFile = outputFile.replace('.docx', '.zip');
-    const extractDir = outputFile.replace('.docx', '-extracted');
 
     fs.writeFileSync(outputFile, result);
-    fs.writeFileSync(zipFile, result);
 
-    // 解压并读取 document.xml
-    if (fs.existsSync(extractDir)) {
-      fs.rmSync(extractDir, { recursive: true, force: true });
-    }
-    execSync(`powershell -Command "Expand-Archive -Path '${zipFile}' -DestinationPath '${extractDir}'"`, { stdio: 'ignore' });
-
-    const xmlPath = path.join(extractDir, 'word', 'document.xml');
-    const xml = fs.readFileSync(xmlPath, 'utf-8');
+    // 使用 JSZip 读取 document.xml
+    const zip = await JSZip.loadAsync(result);
+    const xml = await zip.file('word/document.xml').async('string');
 
     // 运行校验
     let passed = 0;
     let failed = 0;
+    const failedValidations = [];
 
     console.log('\n校验结果:');
     for (const validation of testCase.validations) {
@@ -236,17 +204,27 @@ async function runTest(testCase, index, outputDir) {
       } else {
         console.log(`  ✗ ${validation.description}`);
         failed++;
+        failedValidations.push({
+          description: validation.description,
+          type: validation.type,
+        });
       }
     }
 
     console.log(`\n结果: ${passed} 通过, ${failed} 失败`);
     console.log(`输出文件: ${outputFile}`);
 
-    // 清理临时文件
-    fs.unlinkSync(zipFile);
-    fs.rmSync(extractDir, { recursive: true, force: true });
+    // 清理临时文件 (不再需要，因为没有创建 zip 和解压目录)
+    // fs.unlinkSync(zipFile);
+    // fs.rmSync(extractDir, { recursive: true, force: true });
 
-    return { passed, failed, outputFile, success: failed === 0 };
+    return {
+      passed,
+      failed,
+      outputFile,
+      success: failed === 0,
+      failedValidations: failed > 0 ? failedValidations : undefined,
+    };
 
   } catch (error) {
     console.error(`\n❌ 测试失败: ${error.message}`);
@@ -599,6 +577,23 @@ async function runAllTests() {
   const successTests = results.filter(r => r.success).length;
   const failedTests = results.filter(r => !r.success).length;
   console.log(`\n测试用例: ${successTests} 成功, ${failedTests} 失败`);
+
+  // 列出失败的测试用例
+  const failedResults = results.filter(r => !r.success);
+  if (failedResults.length > 0) {
+    console.log(`\n失败的测试用例 (${failedResults.length} 个):`);
+    failedResults.forEach((result, index) => {
+      const testCase = testCases[results.indexOf(result)];
+      console.log(`  ${index + 1}. ${testCase.name} (${testCase.filename})`);
+      if (result.failedValidations && result.failedValidations.length > 0) {
+        result.failedValidations.forEach(validation => {
+          console.log(`     - ${validation.description}: ${validation.error || '验证失败'}`);
+        });
+      } else if (result.error) {
+        console.log(`     错误: ${result.error}`);
+      }
+    });
+  }
 
   // 列出生成的文件
   console.log(`\n生成的文件位于: ${outputDir}`);
