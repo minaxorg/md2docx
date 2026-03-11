@@ -104,8 +104,9 @@ export default function table(state, node) {
   for (const row of mdNode.children) {
     row.numCols = pendingRowSpans.shift() || 0;
     for (const cell of row.children) {
-      const rowSpan = Number.parseInt(cell.data?.rowSpan || '1', 10);
-      const colSpan = Number.parseInt(cell.data?.colSpan || '1', 10);
+      // 支持从 data 和直接属性上读取 rowSpan / colSpan
+      const rowSpan = Number.parseInt(cell.data?.rowSpan || cell.rowSpan || '1', 10);
+      const colSpan = Number.parseInt(cell.data?.colSpan || cell.colSpan || '1', 10);
       if (cell.data?.align && !mdNode.align[row.numCols]) {
         mdNode.align[row.numCols] = cell.data.align;
       }
