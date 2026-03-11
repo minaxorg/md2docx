@@ -73,8 +73,8 @@ export default async function table(ctx, node) {
       columnWidths = null;
     }
   }
-
-  if (!columnWidths && node.children.length > 0 && node.children[0].children) {
+  //避免grid和单元格宽度不匹配的情况
+  if (!columnWidths && node.children.length > 0 && node.children[0].children &&node.children[0].children.length === numCols) {
     // 从第一行的单元格中读取宽度
     const firstRow = node.children[0];
     const cellWidths = firstRow.children.map((cell) => {
@@ -113,7 +113,6 @@ export default async function table(ctx, node) {
 
   // 如果设置了 noHeader，不使用表格样式，避免应用 firstRow 样式
   const tableStyle = node.noHeader ? undefined : 'PageBlock';
-
   const tbl = new Table({
     style: tableStyle,
     rows,
